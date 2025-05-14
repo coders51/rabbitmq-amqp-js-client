@@ -1,0 +1,54 @@
+{
+  "name": "rabbitmq-amqp-js-client",
+  "version": "0.1.0",
+  "description": "Rabbit AMQP 1.0 client for JS/TS application",
+  "main": "dist/index.js",
+  "scripts": {
+    "test": "mocha test",
+    "build": "tsc",
+    "check": "npm run check-ts && npm run check-lint && npm run check-format && npm run check-spell",
+    "check-ts": "tsc --noEmit && tsc --project test/tsconfig.json --noEmit",
+    "check-lint": "tsc --noEmit && eslint 'src/**/*.ts' 'test/**/*.ts'",
+    "check-format": "prettier -c 'src/**/*.ts' 'test/**/*.ts'",
+    "check-spell": "cspell 'src/**/*ts' 'test/**/*ts'",
+    "format": "prettier -w './**/*.ts'"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/coders51/rabbitmq-amqp-js-client.git"
+  },
+  "keywords": [
+    "RabbitMQ",
+    "AMQP 1.0"
+  ],
+  "author": "coders51 <info@coders51.com>",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/coders51/rabbitmq-amqp-js-client/issues"
+  },
+  "homepage": "https://github.com/coders51/rabbitmq-amqp-js-client#readme",
+  "devDependencies": {
+    "@eslint/compat": "^1.2.9",
+    "@eslint/eslintrc": "^3.3.1",
+    "@eslint/js": "^9.26.0",
+    "@tsconfig/node-lts": "^22.0.1",
+    "@typescript-eslint/eslint-plugin": "^8.32.1",
+    "@typescript-eslint/parser": "^8.32.1",
+    "chai": "^5.2.0",
+    "chai-as-promised": "^8.0.1",
+    "cspell": "^9.0.1",
+    "eslint": "^9.26.0",
+    "eslint-config-prettier": "^10.1.5",
+    "eslint-plugin-import": "^2.31.0",
+    "eslint-plugin-no-only-tests": "^3.3.0",
+    "eslint-plugin-prettier": "^5.4.0",
+    "globals": "^16.1.0",
+    "mocha": "^11.2.2",
+    "prettier": "3.5.3",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.8.3"
+  },
+  "dependencies": {
+    "rhea": "^3.0.4"
+  }
+}
