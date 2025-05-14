@@ -5,7 +5,7 @@
   "main": "dist/index.js",
   "scripts": {
     "test": "mocha test",
-    "build": "tsc",
+    "build": "tsc && tsup",
     "check": "npm run check-ts && npm run check-lint && npm run check-format && npm run check-spell",
     "check-ts": "tsc --noEmit && tsc --project test/tsconfig.json --noEmit",
     "check-lint": "tsc --noEmit && eslint 'src/**/*.ts' 'test/**/*.ts'",
@@ -46,6 +46,7 @@
     "mocha": "^11.2.2",
     "prettier": "3.5.3",
     "ts-node": "^10.9.2",
+    "tsup": "^8.4.0",
     "typescript": "^5.8.3"
   },
   "dependencies": {

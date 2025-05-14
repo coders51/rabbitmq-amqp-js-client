@@ -19,7 +19,7 @@ const compat = new FlatCompat({
     allConfig: js.configs.all
 });
 
-export default defineConfig([globalIgnores(["dist/*"]), {
+export default defineConfig([globalIgnores(["dist/*", "*.config.ts", "*.config.mjs"]), {
     extends: fixupConfigRules(compat.extends(
         "plugin:import/errors",
         "plugin:import/warnings",
@@ -47,7 +47,7 @@ export default defineConfig([globalIgnores(["dist/*"]), {
         sourceType: "module",
 
         parserOptions: {
-            project: ["tsconfig.json", "test/tsconfig.json", "example/tsconfig.json"],
+            project: ["tsconfig.json", "test/tsconfig.json"],
         },
     },
 
