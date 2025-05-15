@@ -23,6 +23,7 @@ jobs:
         image: rabbitmq:4.1.0-management
         options: --hostname test-node --name test-node
         env:
+          RABBITMQ_HOSTNAME: "test-node"
           RABBITMQ_DEFAULT_USER: "test-user"
           RABBITMQ_DEFAULT_PASS: "test-password"
         volumes:

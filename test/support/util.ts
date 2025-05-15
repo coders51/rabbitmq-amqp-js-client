@@ -5,11 +5,11 @@ export type QueueInfoResponse = {
   name: string
 }
 
-const host = "localhost"
-const port = 15672
+const host = process.env.RABBITMQ_HOSTNAME ?? "localhost"
+const managementPort = 15672
 const vhost = encodeURIComponent("/")
-const password = "rabbit"
-const username = "rabbit"
+export const username = process.env.RABBITMQ_USER ?? "rabbit"
+export const password = process.env.RABBITMQ_PASSWORD ?? "rabbit"
 
 export async function existsQueue(queueName: string): Promise<boolean> {
   const response = await getQueueInfo(queueName)
@@ -24,7 +24,7 @@ export async function existsQueue(queueName: string): Promise<boolean> {
 }
 
 async function getQueueInfo(queue: string): Promise<KyResponse<QueueInfoResponse>> {
-  const response = await ky.get<QueueInfoResponse>(`http://${host}:${port}/api/queues/${vhost}/${queue}`, {
+  const response = await ky.get<QueueInfoResponse>(`http://${host}:${managementPort}/api/queues/${vhost}/${queue}`, {
     headers: {
       Authorization: Buffer.from(`${username}:${password}`).toString("base64"),
     },

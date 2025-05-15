@@ -1,4 +1,13 @@
 {
   "language": "en",
-  "words": ["ackmode", "ampq", "prefetch", "amqpvalue", "RABBITMQ", "Sasl"]
+  "words": [
+    "ackmode",
+    "ampq",
+    "amqpvalue",
+    "perftest",
+    "prefetch",
+    "RABBITMQ",
+    "rabbitmqctl",
+    "Sasl"
+  ]
 }
