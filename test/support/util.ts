@@ -1,5 +1,5 @@
-import ky, { KyResponse } from "ky"
 import { inspect } from "util"
+import got, { Response } from "got"
 
 export type QueueInfoResponse = {
   name: string
@@ -15,7 +15,7 @@ export async function existsQueue(queueName: string): Promise<boolean> {
   const response = await getQueueInfo(queueName)
 
   if (!response.ok) {
-    if (response.status === 404) return false
+    if (response.statusCode === 404) return false
 
     throw new Error(`HTTPError: ${inspect(response)}`)
   }
@@ -23,11 +23,12 @@ export async function existsQueue(queueName: string): Promise<boolean> {
   return response.ok
 }
 
-async function getQueueInfo(queue: string): Promise<KyResponse<QueueInfoResponse>> {
-  const response = await ky.get<QueueInfoResponse>(`http://${host}:${managementPort}/api/queues/${vhost}/${queue}`, {
+async function getQueueInfo(queue: string): Promise<Response<QueueInfoResponse>> {
+  const response = await got.get<QueueInfoResponse>(`http://${host}:${managementPort}/api/queues/${vhost}/${queue}`, {
     headers: {
-      Authorization: Buffer.from(`${username}:${password}`).toString("base64"),
+      Authorization: `Basic ${Buffer.from(`${username}:${password}`).toString("base64")}`,
     },
+    responseType: "json",
     throwHttpErrors: false,
   })
 

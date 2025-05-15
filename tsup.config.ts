@@ -1,13 +1,19 @@
-import { defineConfig } from 'tsup'
+import { defineConfig } from "tsup"
 
 export default defineConfig({
-  entry: ['src/index.ts'],
+  entry: ["src/index.ts"],
   splitting: false,
   sourcemap: true,
   clean: true,
-  format: ['cjs', 'esm', 'iife'],
+  format: ["cjs", "esm"],
+  outExtension(ctx) {
+    return {
+      dts: ".d.ts",
+      js: ctx.format === "cjs" ? ".cjs" : ".mjs",
+    }
+  },
   dts: true,
   minify: true,
   treeshake: true,
-  target: "es2020"
+  target: ["es2020", "node20"],
 })
