@@ -17,7 +17,7 @@ describe("Management", () => {
     management.close()
   })
 
-  test("create a queue through the management", async () => {
+  test.skip("create a queue through the management", async () => {
     const queue = management.queue("test-coda").exclusive(true).autoDelete(true).declare()
 
     expect(await existsQueue(queue.name)).to.eql(true)

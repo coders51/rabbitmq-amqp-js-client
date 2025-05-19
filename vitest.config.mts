@@ -4,6 +4,13 @@ export default defineConfig({
   test: {
     fileParallelism: false,
     testTimeout: 5000,
+    sequence: {
+      setupFiles: "list",
+    },
+    setupFiles: ["./test/setup.ts", "./test/index.ts"],
+    env: {
+      NODE_ENV: "test",
+    },
     expect: {
       poll: { timeout: 1500, interval: 5 },
     },
