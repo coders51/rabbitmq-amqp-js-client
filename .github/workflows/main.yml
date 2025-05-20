@@ -1,0 +1,79 @@
+# This workflow will do a clean installation of node dependencies, cache/restore them, build the source code and run tests across different versions of node
+# For more information see: https://help.github.com/actions/language-and-framework-guides/using-nodejs-with-github-actions
+
+name: Node.js CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        node-version: [18.x, 20.x, 21.x, 22.x, 23.x]
+        # See supported Node.js release schedule at https://nodejs.org/en/about/releases/
+
+    services:
+      rabbitmq:
+        image: rabbitmq:4.1.0-management
+        options: --hostname test-node --name test-node
+        env:
+          RABBITMQ_HOSTNAME: "test-node"
+          RABBITMQ_DEFAULT_USER: "test-user"
+          RABBITMQ_DEFAULT_PASS: "test-password"
+        volumes:
+          # these directories will be empty until checkout, but they will be
+          # populated by the time we restart the service
+          - ${{ github.workspace }}/conf:/etc/rabbitmq
+        ports:
+          - 5672:5672
+          - 15672:15672
+
+    steps:
+      - uses: actions/checkout@v3
+      - name: Use Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v3
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: "npm"
+      # - name: Generate certificates
+      #   env:
+      #     CN: test-node
+      #   run: |
+      #     git clone https://github.com/rabbitmq/tls-gen tls-gen
+      #     cd tls-gen/basic
+      #     make
+      #     cd ../..
+      #     cp -a tls-gen/basic/result certs/
+      #     sudo chown -R 999:999 certs
+      #     sudo mv certs/server_test-node_certificate.pem certs/server_rabbitmq_certificate.pem
+      #     sudo mv certs/server_test-node_key.pem certs/server_rabbitmq_key.pem
+      - name: Restart RabbitMQ
+        run: |
+          docker restart test-node
+          sleep 2
+          docker exec test-node rabbitmqctl await_startup
+      - run: npm ci
+      - run: npm run check
+      - run: npm run build --if-present
+      - run: |
+          docker exec test-node rabbitmqctl add_user 'O=client,CN=test-node' ''
+          docker exec test-node rabbitmqctl clear_password 'O=client,CN=test-node'
+          docker exec test-node rabbitmqctl set_permissions 'O=client,CN=test-node' '.*' '.*' '.*'
+      - run: npm test
+        env:
+          RABBITMQ_USER: "test-user"
+          RABBITMQ_PASSWORD: "test-password"
+      # - run: cd example && npm install && npm start
+      #   env:
+      #     RABBITMQ_USER: "test-user"
+      #     RABBITMQ_PASSWORD: "test-password"
+      # - run: cd performance_test && npm install && npm run perftest 100000
+      #   env:
+      #     RABBITMQ_USER: "test-user"
+      #     RABBITMQ_PASSWORD: "test-password"

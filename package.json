@@ -1,0 +1,70 @@
+{
+  "name": "rabbitmq-amqp-js-client",
+  "version": "0.1.0",
+  "description": "Rabbit AMQP 1.0 client for JS/TS application",
+  "main": "dist/index.js",
+  "type": "module",
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.mjs"
+      },
+      "require": {
+        "types": "./dist/index.d.cts",
+        "default": "./dist/index.cjs"
+      },
+      "default": "./dist/index.mjs"
+    },
+    "./dist/*": {
+      "types": "./dist/*.d.ts",
+      "import": "./dist/*.mjs",
+      "require": "./dist/*.cjs"
+    }
+  },
+  "scripts": {
+    "test": "vitest run",
+    "build": "tsc --project tsconfig.build.json && tsup",
+    "check": "npm run check-ts && npm run check-lint && npm run check-format && npm run check-spell",
+    "check-ts": "tsc --noEmit",
+    "check-lint": "tsc --noEmit && eslint 'src/**/*.ts' 'test/**/*.ts'",
+    "check-format": "prettier -c 'src/**/*.ts' 'test/**/*.ts'",
+    "check-spell": "cspell 'src/**/*ts' 'test/**/*ts'",
+    "format": "prettier -w './**/*.ts'"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/coders51/rabbitmq-amqp-js-client.git"
+  },
+  "keywords": [
+    "RabbitMQ",
+    "AMQP 1.0"
+  ],
+  "author": "coders51 <info@coders51.com>",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/coders51/rabbitmq-amqp-js-client/issues"
+  },
+  "homepage": "https://github.com/coders51/rabbitmq-amqp-js-client#readme",
+  "devDependencies": {
+    "@eslint/js": "^9.26.0",
+    "@tsconfig/node22": "^22.0.1",
+    "@types/chai": "^5.2.2",
+    "@types/chai-as-promised": "^8.0.2",
+    "chai": "^5.2.0",
+    "chai-as-promised": "^8.0.1",
+    "cspell": "^8.19.4",
+    "eslint": "^9.26.0",
+    "globals": "^16.1.0",
+    "got": "^13.0.0",
+    "prettier": "3.5.3",
+    "ts-node": "^10.9.2",
+    "tsup": "^8.4.0",
+    "typescript": "^5.8.3",
+    "typescript-eslint": "^8.32.1",
+    "vitest": "^3.1.3"
+  },
+  "dependencies": {
+    "rhea": "^3.0.4"
+  }
+}

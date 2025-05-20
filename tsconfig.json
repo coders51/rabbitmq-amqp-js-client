@@ -1,0 +1,16 @@
+{
+  "extends": "@tsconfig/node22/tsconfig.json",
+  "compilerOptions": {
+    "preserveConstEnums": true,
+    "noImplicitReturns": true,
+    "noFallthroughCasesInSwitch": true,
+    "noImplicitThis": true,
+    "strictNullChecks": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "sourceMap": true,
+    "outDir": "dist"
+  },
+  "include": ["src/**/*", "test/**/*", "vitest.config.mts"],
+  "exclude": ["node_modules"]
+}
