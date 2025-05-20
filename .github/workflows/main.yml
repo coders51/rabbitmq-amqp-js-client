@@ -24,6 +24,7 @@ jobs:
         options: --hostname test-node --name test-node
         env:
           RABBITMQ_HOSTNAME: "test-node"
+          RABBITMQ_PORT: "5672"
           RABBITMQ_DEFAULT_USER: "test-user"
           RABBITMQ_DEFAULT_PASS: "test-password"
         volumes:

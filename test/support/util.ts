@@ -1,15 +1,16 @@
 import { inspect } from "util"
 import got, { Response } from "got"
 
+export const host = process.env.RABBITMQ_HOSTNAME ?? "localhost"
+export const managementPort = 15672
+export const port = parseInt(process.env.RABBITMQ_PORT ?? "5672")
+export const vhost = encodeURIComponent("/")
+export const username = process.env.RABBITMQ_USER ?? "rabbit"
+export const password = process.env.RABBITMQ_PASSWORD ?? "rabbit"
+
 export type QueueInfoResponse = {
   name: string
 }
-
-const host = process.env.RABBITMQ_HOSTNAME ?? "localhost"
-const managementPort = 15672
-const vhost = encodeURIComponent("/")
-export const username = process.env.RABBITMQ_USER ?? "rabbit"
-export const password = process.env.RABBITMQ_PASSWORD ?? "rabbit"
 
 export async function existsQueue(queueName: string): Promise<boolean> {
   const response = await getQueueInfo(queueName)
@@ -33,4 +34,10 @@ async function getQueueInfo(queue: string): Promise<Response<QueueInfoResponse>>
   })
 
   return response
+}
+
+export const wait = async (ms: number) => {
+  return new Promise((res) => {
+    setTimeout(() => res(true), ms)
+  })
 }
