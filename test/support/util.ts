@@ -1,6 +1,10 @@
 import { inspect } from "util"
 import got, { Response } from "got"
 
+export type ConnectionInfoResponse = {
+  name: string
+}
+
 export type QueueInfoResponse = {
   name: string
 }
@@ -10,6 +14,33 @@ const managementPort = 15672
 const vhost = encodeURIComponent("/")
 export const username = process.env.RABBITMQ_USER ?? "rabbit"
 export const password = process.env.RABBITMQ_PASSWORD ?? "rabbit"
+
+export async function existsConnection(connectionName: string): Promise<boolean> {
+  const response = await getConnectionInfo(connectionName)
+
+  if (!response.ok) {
+    if (response.statusCode === 404) return false
+
+    throw new Error(`HTTPError: ${inspect(response)}`)
+  }
+
+  return response.ok
+}
+
+async function getConnectionInfo(connection: string): Promise<Response<ConnectionInfoResponse>> {
+  const response = await got.get<ConnectionInfoResponse>(
+    `http://${host}:${managementPort}/api/connections/${connection}`,
+    {
+      headers: {
+        Authorization: `Basic ${Buffer.from(`${username}:${password}`).toString("base64")}`,
+      },
+      responseType: "json",
+      throwHttpErrors: false,
+    }
+  )
+
+  return response
+}
 
 export async function existsQueue(queueName: string): Promise<boolean> {
   const response = await getQueueInfo(queueName)
