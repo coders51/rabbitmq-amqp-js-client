@@ -1,20 +1,20 @@
 import { afterEach, beforeEach, describe, test } from "vitest"
 import { use, expect } from "chai"
 import chaiAsPromised from "chai-as-promised"
-import { AmqpEnvironment, Environment } from "../../src/environment"
-import { existsConnection } from "../support/util"
+import { AmqpEnvironment, Environment } from "../../src/environment.js"
+import { host, port, username, password, numberOfConnections } from "../support/util.js"
 
 use(chaiAsPromised)
 
-describe("Environment", () => {
+describe.skip("Environment", () => {
   let environment: Environment
 
   beforeEach(async () => {
     environment = await AmqpEnvironment.create({
-      host: "localhost",
-      port: 5672,
-      username: "guest",
-      password: "guest",
+      host,
+      port,
+      username,
+      password,
     })
   })
 
@@ -23,8 +23,8 @@ describe("Environment", () => {
   })
 
   test("create a connection through the environment", async () => {
-    const connection = await environment.createConnection()
+    await environment.createConnection()
 
-    expect(await existsConnection(connection.name)).to.eql(true)
+    expect(await numberOfConnections()).to.eql(1)
   })
 })

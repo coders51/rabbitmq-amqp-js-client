@@ -9,37 +9,21 @@ export type QueueInfoResponse = {
   name: string
 }
 
-const host = process.env.RABBITMQ_HOSTNAME ?? "localhost"
-const managementPort = 15672
-const vhost = encodeURIComponent("/")
+export const host = process.env.RABBITMQ_HOSTNAME ?? "localhost"
+export const port = parseInt(process.env.RABBITMQ_PORT ?? "5672")
+export const managementPort = 15672
+export const vhost = encodeURIComponent("/")
 export const username = process.env.RABBITMQ_USER ?? "rabbit"
 export const password = process.env.RABBITMQ_PASSWORD ?? "rabbit"
 
-export async function existsConnection(connectionName: string): Promise<boolean> {
-  const response = await getConnectionInfo(connectionName)
+export async function numberOfConnections(): Promise<number> {
+  const response = await got.get<ConnectionInfoResponse[]>(`http://${host}:${managementPort}/api/connections`, {
+    username,
+    password,
+    responseType: "json",
+  })
 
-  if (!response.ok) {
-    if (response.statusCode === 404) return false
-
-    throw new Error(`HTTPError: ${inspect(response)}`)
-  }
-
-  return response.ok
-}
-
-async function getConnectionInfo(connection: string): Promise<Response<ConnectionInfoResponse>> {
-  const response = await got.get<ConnectionInfoResponse>(
-    `http://${host}:${managementPort}/api/connections/${connection}`,
-    {
-      headers: {
-        Authorization: `Basic ${Buffer.from(`${username}:${password}`).toString("base64")}`,
-      },
-      responseType: "json",
-      throwHttpErrors: false,
-    }
-  )
-
-  return response
+  return response.body.length
 }
 
 export async function existsQueue(queueName: string): Promise<boolean> {
@@ -64,4 +48,10 @@ async function getQueueInfo(queue: string): Promise<Response<QueueInfoResponse>>
   })
 
   return response
+}
+
+export async function wait(ms: number) {
+  return new Promise((res) => {
+    setTimeout(() => res(true), ms)
+  })
 }

@@ -1,4 +1,4 @@
-import { Connection } from "./connection"
+import { Connection } from "./connection.js"
 
 export interface Environment {
   createConnection(): Promise<Connection>
@@ -13,16 +13,17 @@ export type EnvironmentParams = {
 }
 
 export class AmqpEnvironment implements Environment {
-  static create(params: EnvironmentParams): Promise<AmqpEnvironment> {
-    return Promise.resolve(new AmqpEnvironment(params))
-  }
-
   constructor(private params: EnvironmentParams) {}
 
   createConnection(): Promise<Connection> {
-    return Promise.resolve({ name: "123.123.123connection" })
+    return Promise.resolve({ name: this.params.host })
   }
+
   close(): Promise<void> {
     return Promise.resolve()
+  }
+
+  static create(params: EnvironmentParams): Promise<AmqpEnvironment> {
+    return Promise.resolve(new AmqpEnvironment(params))
   }
 }

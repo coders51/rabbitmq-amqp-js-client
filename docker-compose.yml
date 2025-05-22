@@ -1,6 +1,6 @@
 services:
   rabbitmq-rhea:
-    image: rabbitmq:4.1.0-management
+    image: rabbitmq:4.0.9-management
     container_name: rabbitmq-rhea
     restart: unless-stopped
     hostname: "rabbitmq"
@@ -10,5 +10,6 @@ services:
     environment:
       RABBITMQ_DEFAULT_USER: "rabbit"
       RABBITMQ_DEFAULT_PASS: "rabbit"
+      RABBITMQ_PORT: "5672"
     volumes:
       - ./conf/:/etc/rabbitmq/
