@@ -6,7 +6,7 @@ import { host, port, username, password, numberOfConnections } from "../support/
 
 use(chaiAsPromised)
 
-describe.skip("Environment", () => {
+describe("Environment", () => {
   let environment: Environment
 
   beforeEach(async () => {
