@@ -1,4 +1,6 @@
-import { Connection } from "./connection.js"
+import { ConnectionEvents, Container, create_container } from "rhea"
+import { AmqpConnection, Connection } from "./connection.js"
+import { Connection as RheaConnection } from "rhea"
 
 export interface Environment {
   createConnection(): Promise<Connection>
@@ -13,17 +15,52 @@ export type EnvironmentParams = {
 }
 
 export class AmqpEnvironment implements Environment {
-  constructor(private params: EnvironmentParams) {}
+  private readonly host: string
+  private readonly port: number
+  private readonly username: string
+  private readonly password: string
+  private readonly container: Container
+  private readonly connections: Connection[] = []
 
-  createConnection(): Promise<Connection> {
-    return Promise.resolve({ name: this.params.host })
+  constructor({ host, port, username, password }: EnvironmentParams) {
+    this.host = host
+    this.port = port
+    this.username = username
+    this.password = password
+    this.container = create_container()
   }
 
-  close(): Promise<void> {
-    return Promise.resolve()
+  async createConnection(): Promise<Connection> {
+    const rheaConnection = await this.openConnection()
+    const connection = new AmqpConnection(rheaConnection)
+    this.connections.push(connection)
+
+    return connection
   }
 
-  static create(params: EnvironmentParams): Promise<AmqpEnvironment> {
-    return Promise.resolve(new AmqpEnvironment(params))
+  async close(): Promise<void> {
+    await Promise.allSettled(
+      this.connections.map(async (c) => {
+        await c.close()
+      })
+    )
   }
+
+  private async openConnection(): Promise<RheaConnection> {
+    return new Promise((res, rej) => {
+      this.container.once(ConnectionEvents.connectionOpen, (context) => {
+        return res(context.connection)
+      })
+      this.container.once(ConnectionEvents.error, (context) => {
+        console.log(context)
+        rej()
+      })
+
+      this.container.connect({ host: this.host, port: this.port, username: this.username, password: this.password })
+    })
+  }
+}
+
+export function createEnvironment(params: EnvironmentParams): Environment {
+  return new AmqpEnvironment(params)
 }

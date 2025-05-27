@@ -1,5 +1,7 @@
 import { inspect } from "util"
 import got, { Response } from "got"
+import { expect } from "chai"
+import { AssertionError } from "assertion-error"
 
 export type ConnectionInfoResponse = {
   name: string
@@ -54,4 +56,25 @@ export async function wait(ms: number) {
   return new Promise((res) => {
     setTimeout(() => res(true), ms)
   })
+}
+
+export function elapsedFrom(from: number): number {
+  return Date.now() - from
+}
+
+// eslint-disable-next-line @typescript-eslint/no-unsafe-function-type
+export async function eventually(fn: Function, timeout = 5000) {
+  const start = Date.now()
+  while (true) {
+    try {
+      await fn()
+      return
+    } catch (error) {
+      if (elapsedFrom(start) > timeout) {
+        if (error instanceof AssertionError) throw error
+        expect.fail(error as string)
+      }
+      await wait(5)
+    }
+  }
 }

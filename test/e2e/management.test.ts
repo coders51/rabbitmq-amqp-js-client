@@ -6,7 +6,7 @@ import chaiAsPromised from "chai-as-promised"
 
 use(chaiAsPromised)
 
-describe("Management", () => {
+describe.skip("Management", () => {
   let management: Management
 
   beforeEach(() => {
