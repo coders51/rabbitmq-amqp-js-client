@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, test } from "vitest"
 import { use, expect } from "chai"
 import chaiAsPromised from "chai-as-promised"
-import { host, port, username, password, numberOfConnections, eventually, wait } from "../../support/util.js"
+import { host, port, username, password, numberOfConnections, eventually } from "../../support/util.js"
 import { Connection, ConnectionOptions, Container, create_container } from "rhea"
 
 use(chaiAsPromised)
@@ -35,7 +35,6 @@ describe("Rhea tests", () => {
       username,
       password,
     })
-    await wait(4000)
 
     await eventually(async () => {
       await openSender(connection)
