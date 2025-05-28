@@ -50,8 +50,7 @@ async function open(container: Container, params: ConnectionOptions): Promise<Co
       return res(context.connection)
     })
     container.once("error", (context) => {
-      console.log(context)
-      rej()
+      return rej(context.connection.error)
     })
     container.connect(params)
   })
@@ -63,8 +62,7 @@ async function openReceiver(connection: Connection) {
       return res(context.receiver)
     })
     connection.once("receiver_error", (context) => {
-      console.log(context)
-      rej()
+      return rej(context.connection.error)
     })
     connection.open_receiver({
       snd_settle_mode: 1,
@@ -83,8 +81,7 @@ async function openSender(connection: Connection) {
       return res(context.sender)
     })
     connection.once("sender_error", (context) => {
-      console.log(context)
-      rej()
+      return rej(context.connection.error)
     })
     connection.open_sender({
       snd_settle_mode: 1,

@@ -2,6 +2,7 @@ import { ConnectionEvents, Connection as RheaConnection } from "rhea"
 
 export interface Connection {
   close(): Promise<boolean>
+  isOpen(): boolean
 }
 
 export class AmqpConnection implements Connection {
@@ -17,11 +18,14 @@ export class AmqpConnection implements Connection {
         return res(true)
       })
       this.rheaConnection.once(ConnectionEvents.connectionError, (context) => {
-        console.error("ERROR: ", context.connection.error)
-        return rej(false)
+        return rej(new Error("Connection error: " + context.connection.error))
       })
 
       this.rheaConnection.close()
     })
+  }
+
+  public isOpen(): boolean {
+    return this.rheaConnection.is_open()
   }
 }

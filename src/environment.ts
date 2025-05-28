@@ -20,7 +20,7 @@ export class AmqpEnvironment implements Environment {
   private readonly username: string
   private readonly password: string
   private readonly container: Container
-  private readonly connections: Connection[] = []
+  private connections: Connection[] = []
 
   constructor({ host, port, username, password }: EnvironmentParams) {
     this.host = host
@@ -38,26 +38,30 @@ export class AmqpEnvironment implements Environment {
     return connection
   }
 
-  async close(): Promise<void> {
-    await Promise.allSettled(
-      this.connections.map(async (c) => {
-        await c.close()
-      })
-    )
-  }
-
   private async openConnection(): Promise<RheaConnection> {
     return new Promise((res, rej) => {
       this.container.once(ConnectionEvents.connectionOpen, (context) => {
         return res(context.connection)
       })
       this.container.once(ConnectionEvents.error, (context) => {
-        console.log(context)
-        rej()
+        return rej(context.error ?? new Error("Connection error occurred"))
       })
 
       this.container.connect({ host: this.host, port: this.port, username: this.username, password: this.password })
     })
+  }
+
+  async close(): Promise<void> {
+    await this.closeConnections()
+    this.connections = []
+  }
+
+  private async closeConnections(): Promise<void> {
+    await Promise.allSettled(
+      this.connections.map(async (c) => {
+        if (c.isOpen()) await c.close()
+      })
+    )
   }
 }
 
