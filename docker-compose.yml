@@ -10,6 +10,5 @@ services:
     environment:
       RABBITMQ_DEFAULT_USER: "rabbit"
       RABBITMQ_DEFAULT_PASS: "rabbit"
-      RABBITMQ_PORT: "5672"
     volumes:
       - ./conf/:/etc/rabbitmq/

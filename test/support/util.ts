@@ -72,7 +72,7 @@ export async function eventually(fn: Function, timeout = 5000) {
     } catch (error) {
       if (elapsedFrom(start) > timeout) {
         if (error instanceof AssertionError) throw error
-        expect.fail(error as string)
+        expect.fail(error instanceof Error ? error.message : String(error))
       }
       await wait(5)
     }
