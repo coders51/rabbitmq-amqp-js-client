@@ -20,7 +20,7 @@ export class AmqpEnvironment implements Environment {
   private readonly username: string
   private readonly password: string
   private readonly container: Container
-  private connections: Connection[] = []
+  private readonly connections: Connection[] = []
 
   constructor({ host, port, username, password }: EnvironmentParams) {
     this.host = host
@@ -53,7 +53,7 @@ export class AmqpEnvironment implements Environment {
 
   async close(): Promise<void> {
     await this.closeConnections()
-    this.connections = []
+    this.connections.length = 0
   }
 
   private async closeConnections(): Promise<void> {
