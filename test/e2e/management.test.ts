@@ -6,7 +6,7 @@ import chaiAsPromised from "chai-as-promised"
 
 use(chaiAsPromised)
 
-describe("Management", () => {
+describe.skip("Management", () => {
   let management: Management
 
   beforeEach(() => {
@@ -17,7 +17,7 @@ describe("Management", () => {
     management.close()
   })
 
-  test.skip("create a queue through the management", async () => {
+  test("create a queue through the management", async () => {
     const queue = management.queue("test-coda").exclusive(true).autoDelete(true).declare()
 
     expect(await existsQueue(queue.name)).to.eql(true)

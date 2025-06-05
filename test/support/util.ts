@@ -1,15 +1,32 @@
 import { inspect } from "util"
 import got, { Response } from "got"
+import { expect } from "chai"
+import { AssertionError } from "assertion-error"
+
+export type ConnectionInfoResponse = {
+  name: string
+}
 
 export type QueueInfoResponse = {
   name: string
 }
 
-const host = process.env.RABBITMQ_HOSTNAME ?? "localhost"
-const managementPort = 15672
-const vhost = encodeURIComponent("/")
+export const host = process.env.RABBITMQ_HOSTNAME ?? "localhost"
+export const port = parseInt(process.env.RABBITMQ_PORT ?? "5672")
+export const managementPort = 15672
+export const vhost = encodeURIComponent("/")
 export const username = process.env.RABBITMQ_USER ?? "rabbit"
 export const password = process.env.RABBITMQ_PASSWORD ?? "rabbit"
+
+export async function numberOfConnections(): Promise<number> {
+  const response = await got.get<ConnectionInfoResponse[]>(`http://${host}:${managementPort}/api/connections`, {
+    username,
+    password,
+    responseType: "json",
+  })
+
+  return response.body.length
+}
 
 export async function existsQueue(queueName: string): Promise<boolean> {
   const response = await getQueueInfo(queueName)
@@ -33,4 +50,31 @@ async function getQueueInfo(queue: string): Promise<Response<QueueInfoResponse>>
   })
 
   return response
+}
+
+export async function wait(ms: number) {
+  return new Promise((res) => {
+    setTimeout(() => res(true), ms)
+  })
+}
+
+export function elapsedFrom(from: number): number {
+  return Date.now() - from
+}
+
+// eslint-disable-next-line @typescript-eslint/no-unsafe-function-type
+export async function eventually(fn: Function, timeout = 5000) {
+  const start = Date.now()
+  while (true) {
+    try {
+      await fn()
+      return
+    } catch (error) {
+      if (elapsedFrom(start) > timeout) {
+        if (error instanceof AssertionError) throw error
+        expect.fail(error instanceof Error ? error.message : String(error))
+      }
+      await wait(5)
+    }
+  }
 }

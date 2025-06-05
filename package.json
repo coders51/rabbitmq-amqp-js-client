@@ -65,6 +65,7 @@
     "vitest": "^3.1.3"
   },
   "dependencies": {
+    "assertion-error": "^2.0.1",
     "rhea": "^3.0.4"
   }
 }
