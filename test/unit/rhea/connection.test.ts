@@ -1,6 +1,4 @@
-import { afterEach, beforeEach, describe, test } from "vitest"
-import { use, expect } from "chai"
-import chaiAsPromised from "chai-as-promised"
+import { afterEach, beforeEach, describe, expect, test } from "vitest"
 import { host, port, username, password, numberOfConnections, eventually } from "../../support/util.js"
 import {
   Connection,
@@ -15,8 +13,6 @@ import {
   SenderEvents,
   SenderOptions,
 } from "rhea"
-
-use(chaiAsPromised)
 
 describe("Rhea tests", () => {
   let container: Container
