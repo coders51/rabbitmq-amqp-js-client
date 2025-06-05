@@ -1,21 +1,37 @@
+import { Management } from "../../src/index.js"
 import { afterEach, beforeEach, describe, expect, test } from "vitest"
-import { AmqpManagement, Management } from "../../src/index.js"
-import { existsQueue } from "../support/util.js"
+import { eventually, existsQueue, host, password, port, username } from "../support/util.js"
+import { createEnvironment, Environment } from "../../src/environment.js"
+import { Connection } from "../../src/connection.js"
 
-describe.skip("Management", () => {
+describe("Management", () => {
+  let environment: Environment
+  let connection: Connection
   let management: Management
 
-  beforeEach(() => {
-    management = new AmqpManagement()
+  beforeEach(async () => {
+    environment = createEnvironment({
+      host,
+      port,
+      username,
+      password,
+    })
+    connection = await environment.createConnection()
+    management = await connection.management()
   })
 
-  afterEach(() => {
-    management.close()
+  afterEach(async () => {
+    await management.close()
+    await connection.close()
+    await environment.close()
   })
 
   test("create a queue through the management", async () => {
-    const queue = management.queue("test-coda").exclusive(true).autoDelete(true).declare()
+    const queueInfo = await management.declareQueue("test-queue", { exclusive: true, autoDelete: false })
 
-    expect(await existsQueue(queue.name)).to.eql(true)
+    expect(queueInfo.name).to.eql("test-queue")
+    await eventually(async () => {
+      expect(await existsQueue(queueInfo.name)).to.eql("test-queue")
+    })
   })
 })

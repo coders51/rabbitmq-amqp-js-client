@@ -1,6 +1,5 @@
-import { ConnectionEvents, Container, create_container } from "rhea"
+import { ConnectionEvents, Container, create_container, Connection as RheaConnection } from "rhea"
 import { AmqpConnection, Connection } from "./connection.js"
-import { Connection as RheaConnection } from "rhea"
 
 export interface Environment {
   createConnection(): Promise<Connection>

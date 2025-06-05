@@ -113,13 +113,13 @@ type OpenLinkMethods =
   | ((options?: SenderOptions | string) => Sender)
   | ((options?: ReceiverOptions | string) => Receiver)
 
-async function openLink(
+async function openLink<T extends Sender | Receiver>(
   connection: Connection,
   successEvent: LinkOpenEvents,
   errorEvent: LinkErrorEvents,
   openMethod: OpenLinkMethods,
   config?: SenderOptions | ReceiverOptions | string
-): Promise<Sender | Receiver> {
+): Promise<T> {
   return new Promise((res, rej) => {
     connection.once(successEvent, (context) => {
       return res(context.receiver || context.sender)

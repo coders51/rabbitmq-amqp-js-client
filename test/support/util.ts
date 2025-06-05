@@ -49,6 +49,7 @@ async function getQueueInfo(queue: string): Promise<Response<QueueInfoResponse>>
     throwHttpErrors: false,
   })
 
+  console.log(response.body)
   return response
 }
 

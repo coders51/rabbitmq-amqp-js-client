@@ -1,15 +1,19 @@
 import { ConnectionEvents, Connection as RheaConnection } from "rhea"
+import { AmqpManagement, Management } from "./management.js"
 
 export interface Connection {
   close(): Promise<boolean>
   isOpen(): boolean
+  management(): Promise<Management>
 }
 
 export class AmqpConnection implements Connection {
   private readonly rheaConnection: RheaConnection
+  private readonly topologyManagement: Management
 
   constructor(connection: RheaConnection) {
     this.rheaConnection = connection
+    this.topologyManagement = new AmqpManagement(this.rheaConnection)
   }
 
   async close(): Promise<boolean> {
@@ -25,7 +29,13 @@ export class AmqpConnection implements Connection {
     })
   }
 
+  async management(): Promise<Management> {
+    await this.topologyManagement.open()
+
+    return this.topologyManagement
+  }
+
   public isOpen(): boolean {
-    return this.rheaConnection.is_open()
+    return this.rheaConnection ? this.rheaConnection.is_open() : false
   }
 }
