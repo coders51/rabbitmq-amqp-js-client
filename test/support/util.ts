@@ -1,7 +1,7 @@
 import { inspect } from "util"
 import got, { Response } from "got"
-import { expect } from "chai"
 import { AssertionError } from "assertion-error"
+import { expect } from "vitest"
 
 export type ConnectionInfoResponse = {
   name: string

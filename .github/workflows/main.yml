@@ -15,21 +15,17 @@ jobs:
 
     strategy:
       matrix:
-        node-version: [18.x, 20.x, 21.x, 22.x, 23.x]
+        node-version: [18.x, 20.x, 22.x, 24.x]
         # See supported Node.js release schedule at https://nodejs.org/en/about/releases/
 
     services:
       rabbitmq:
-        image: rabbitmq:4.0.9-management
+        image: rabbitmq:4.1.1-management
         options: --hostname test-node --name test-node
         env:
           RABBITMQ_HOSTNAME: "test-node"
           RABBITMQ_DEFAULT_USER: "test-user"
           RABBITMQ_DEFAULT_PASS: "test-password"
-        volumes:
-          # these directories will be empty until checkout, but they will be
-          # populated by the time we restart the service
-          - ${{ github.workspace }}/conf:/etc/rabbitmq
         ports:
           - 5672:5672
           - 15672:15672

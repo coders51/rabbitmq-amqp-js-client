@@ -1,10 +1,6 @@
-import { Management, AmqpManagement } from "../../src/index.js"
-import { afterEach, beforeEach, describe, test } from "vitest"
+import { afterEach, beforeEach, describe, expect, test } from "vitest"
+import { AmqpManagement, Management } from "../../src/index.js"
 import { existsQueue } from "../support/util.js"
-import { use, expect } from "chai"
-import chaiAsPromised from "chai-as-promised"
-
-use(chaiAsPromised)
 
 describe.skip("Management", () => {
   let management: Management
