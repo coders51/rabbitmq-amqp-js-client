@@ -1,4 +1,3 @@
-import { ConnectionEvents, Container, create_container, Connection as RheaConnection } from "rhea"
 import { AmqpConnection, Connection } from "./connection.js"
 
 export interface Environment {
@@ -14,40 +13,15 @@ export type EnvironmentParams = {
 }
 
 export class AmqpEnvironment implements Environment {
-  private readonly host: string
-  private readonly port: number
-  private readonly username: string
-  private readonly password: string
-  private readonly container: Container
-  private readonly connections: Connection[] = []
-
-  constructor({ host, port, username, password }: EnvironmentParams) {
-    this.host = host
-    this.port = port
-    this.username = username
-    this.password = password
-    this.container = create_container()
-  }
+  constructor(
+    private readonly params: EnvironmentParams,
+    private readonly connections: Connection[] = []
+  ) {}
 
   async createConnection(): Promise<Connection> {
-    const rheaConnection = await this.openConnection()
-    const connection = new AmqpConnection(rheaConnection)
+    const connection = await AmqpConnection.create(this.params)
     this.connections.push(connection)
-
     return connection
-  }
-
-  private async openConnection(): Promise<RheaConnection> {
-    return new Promise((res, rej) => {
-      this.container.once(ConnectionEvents.connectionOpen, (context) => {
-        return res(context.connection)
-      })
-      this.container.once(ConnectionEvents.error, (context) => {
-        return rej(context.error ?? new Error("Connection error occurred"))
-      })
-
-      this.container.connect({ host: this.host, port: this.port, username: this.username, password: this.password })
-    })
   }
 
   async close(): Promise<void> {

@@ -1,5 +1,6 @@
 import { AmqpQueueInfo, QueueInfo } from "./queue.js"
 import {
+  generate_uuid,
   Receiver,
   ReceiverEvents,
   ReceiverOptions,
@@ -11,7 +12,7 @@ import {
 
 type QueueOptions = {
   exclusive: boolean
-  autoDelete: boolean
+  auto_delete: boolean
 }
 
 type LinkOpenEvents = SenderEvents.senderOpen | ReceiverEvents.receiverOpen
@@ -32,27 +33,27 @@ const MANAGEMENT_NODE_CONFIGURATION: SenderOptions | ReceiverOptions = {
 export interface Management {
   declareQueue: (queueName: string, options: Partial<QueueOptions>) => Promise<QueueInfo>
   close: () => void
-  open: () => Promise<void>
 }
 
 export class AmqpManagement implements Management {
-  private readonly rheaConnection: RheaConnection
-  private senderLink: Sender | null = null
-  private receiverLink: Receiver | null = null
+  static async create(connection: RheaConnection): Promise<AmqpManagement> {
+    const senderLink = await AmqpManagement.openSender(connection)
+    const receiverLink = await AmqpManagement.openReceiver(connection)
+    return new AmqpManagement(senderLink, receiverLink)
+  }
 
-  constructor(connection: RheaConnection) {
-    this.rheaConnection = connection
+  constructor(
+    // private readonly connection: RheaConnection,
+    private senderLink: Sender,
+    private receiverLink: Receiver
+  ) {
+    console.log(this.receiverLink.is_open())
   }
 
   async close() {}
 
-  async open(): Promise<void> {
-    this.senderLink = await this.openSender(this.rheaConnection)
-    this.receiverLink = await this.openReceiver(this.rheaConnection)
-  }
-
-  private async openReceiver(connection: RheaConnection): Promise<Receiver> {
-    return this.openLink<Receiver>(
+  private static async openReceiver(connection: RheaConnection): Promise<Receiver> {
+    return AmqpManagement.openLink<Receiver>(
       connection,
       ReceiverEvents.receiverOpen,
       ReceiverEvents.receiverError,
@@ -61,8 +62,8 @@ export class AmqpManagement implements Management {
     )
   }
 
-  private async openSender(connection: RheaConnection): Promise<Sender> {
-    return this.openLink<Sender>(
+  private static async openSender(connection: RheaConnection): Promise<Sender> {
+    return AmqpManagement.openLink<Sender>(
       connection,
       SenderEvents.senderOpen,
       SenderEvents.senderError,
@@ -71,7 +72,7 @@ export class AmqpManagement implements Management {
     )
   }
 
-  private async openLink<T extends Sender | Receiver>(
+  private static async openLink<T extends Sender | Receiver>(
     connection: RheaConnection,
     successEvent: LinkOpenEvents,
     errorEvent: LinkErrorEvents,
@@ -90,9 +91,16 @@ export class AmqpManagement implements Management {
   }
 
   async declareQueue(queueName: string, options: Partial<QueueOptions> = {}): Promise<QueueInfo> {
-    // mandi i messaggi per la creazione della coda
-    // decodifichi la risposta
-    // crei la queueInfo in base alla risposta
+    // decode the response
+    // create queueInfo
+
+    this.senderLink.send({
+      message_id: generate_uuid(),
+      to: `/queues/${encodeURIComponent(queueName)}`,
+      reply_to: "$me",
+      subject: "PUT",
+      body: options,
+    })
 
     return new AmqpQueueInfo({ name: queueName })
   }

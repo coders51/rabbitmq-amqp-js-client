@@ -17,7 +17,7 @@ describe("Management", () => {
       password,
     })
     connection = await environment.createConnection()
-    management = await connection.management()
+    management = connection.management()
   })
 
   afterEach(async () => {
@@ -27,11 +27,11 @@ describe("Management", () => {
   })
 
   test("create a queue through the management", async () => {
-    const queueInfo = await management.declareQueue("test-queue", { exclusive: true, autoDelete: false })
+    const queueInfo = await management.declareQueue("test-queue", { exclusive: true, auto_delete: false })
 
     expect(queueInfo.name).to.eql("test-queue")
     await eventually(async () => {
-      expect(await existsQueue(queueInfo.name)).to.eql("test-queue")
+      expect(await existsQueue(queueInfo.name)).to.eql(true)
     })
   })
 })

@@ -24,19 +24,13 @@ describe("Rhea queues", () => {
   })
 
   test("create a queue", async () => {
-    try {
-      await sendCreationQueueMessage(connection, management.sender, management.receiver)
-    } catch (error) {
-      console.log(error)
-    }
+    await sendCreationQueueMessage(connection, management.sender, management.receiver)
 
-    console.log("AAAAAAAAAAAAAAAAA Tutto ok")
+    console.log("AAAAAAAAAAAAAAAAA All ok")
   })
 })
 
-let confirmed = 0
 let sent = 0
-const total = 1
 
 async function sendCreationQueueMessage(connection: Connection, sender: Sender, receiver: Receiver) {
   console.log("hello")
@@ -51,8 +45,9 @@ async function sendCreationQueueMessage(connection: Connection, sender: Sender, 
       console.log("all messages confirmed", context.sender)
       return res(true)
     })
-    connection.once("message", function (context) {
+    receiver.once("message", function (context) {
       console.log("AAAAAAAAAAAAA", context)
+      return res(true)
     })
     connection.once(SenderEvents.rejected, function (context) {
       console.log("AAAAAAAAAAAAAAAA Rejected")
@@ -75,7 +70,7 @@ async function sendCreationQueueMessage(connection: Connection, sender: Sender, 
       return rej(context.sender.error)
     })
 
-    connection.send({
+    sender.send({
       message_id: sent,
       to: `/queues/${encodeURIComponent("test-coda")}`,
       reply_to: "$me",
