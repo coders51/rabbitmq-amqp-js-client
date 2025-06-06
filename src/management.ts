@@ -31,7 +31,7 @@ const MANAGEMENT_NODE_CONFIGURATION: SenderOptions | ReceiverOptions = {
 }
 
 export interface Management {
-  declareQueue: (queueName: string, options: Partial<QueueOptions>) => Promise<QueueInfo>
+  declareQueue: (queueName: string, options: Partial<QueueOptions>) => QueueInfo
   close: () => void
 }
 
@@ -90,7 +90,7 @@ export class AmqpManagement implements Management {
     })
   }
 
-  async declareQueue(queueName: string, options: Partial<QueueOptions> = {}): Promise<QueueInfo> {
+  declareQueue(queueName: string, options: Partial<QueueOptions> = {}): QueueInfo {
     // decode the response
     // create queueInfo
 
