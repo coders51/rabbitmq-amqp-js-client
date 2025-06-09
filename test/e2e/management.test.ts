@@ -1,6 +1,16 @@
 import { Management } from "../../src/index.js"
 import { afterEach, beforeEach, describe, expect, test } from "vitest"
-import { createQueue, eventually, existsQueue, getQueueInfo, host, password, port, username } from "../support/util.js"
+import {
+  createQueue,
+  eventually,
+  existsExchange,
+  existsQueue,
+  getQueueInfo,
+  host,
+  password,
+  port,
+  username,
+} from "../support/util.js"
 import { createEnvironment, Environment } from "../../src/environment.js"
 import { Connection } from "../../src/connection.js"
 
@@ -54,6 +64,20 @@ describe("Management", () => {
 
     await eventually(async () => {
       expect(await existsQueue("test-queue")).to.eql(false)
+    })
+  })
+
+  test.skip("create an exchange through the management", async () => {
+    const exchangeName = "test-exchange"
+    const exchangeInfo = management.declareExchange(exchangeName, {
+      type: "headers",
+      auto_delete: true,
+      durable: false,
+    })
+
+    expect(exchangeInfo.name).to.eql(exchangeName)
+    await eventually(async () => {
+      expect(await existsExchange(exchangeInfo.name)).to.eql(true)
     })
   })
 })

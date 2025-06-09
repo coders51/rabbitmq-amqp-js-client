@@ -1,3 +1,4 @@
+import { AmqpExchangeInfo, ExchangeInfo, ExchangeOptions } from "./exchange.js"
 import { AmqpQueue, Queue, QueueOptions, QueueType } from "./queue.js"
 import {
   EventContext,
@@ -30,6 +31,7 @@ const MANAGEMENT_NODE_CONFIGURATION: SenderOptions | ReceiverOptions = {
 export interface Management {
   declareQueue: (queueName: string, options?: Partial<QueueOptions>) => Promise<Queue>
   deleteQueue: (queueName: string) => Promise<boolean>
+  declareExchange: (exchangeName: string, options: Partial<ExchangeOptions>) => ExchangeInfo
   close: () => void
 }
 
@@ -153,6 +155,21 @@ export class AmqpManagement implements Management {
         .build()
       this.senderLink.send(message)
     })
+  }
+
+  declareExchange(exchangeName: string, options: Partial<ExchangeOptions> = {}): ExchangeInfo {
+    // decode the response
+    // create queueInfo
+
+    this.senderLink.send({
+      message_id: generate_uuid(),
+      to: `/exchanges/${encodeURIComponent(exchangeName)}`,
+      reply_to: "$me",
+      subject: "PUT",
+      body: options,
+    })
+
+    return new AmqpExchangeInfo({ name: exchangeName })
   }
 }
 

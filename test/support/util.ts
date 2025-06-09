@@ -74,6 +74,34 @@ export async function createQueue(queue: string): Promise<boolean> {
   return response.ok
 }
 
+export async function existsExchange(exchangeName: string): Promise<boolean> {
+  const response = await getExchangeInfo(exchangeName)
+
+  if (!response.ok) {
+    if (response.statusCode === 404) return false
+
+    throw new Error(`HTTPError: ${inspect(response)}`)
+  }
+
+  return response.ok
+}
+
+async function getExchangeInfo(exchange: string): Promise<Response<QueueInfoResponse>> {
+  const response = await got.get<QueueInfoResponse>(
+    `http://${host}:${managementPort}/api/exchanges/${vhost}/${exchange}`,
+    {
+      headers: {
+        Authorization: `Basic ${Buffer.from(`${username}:${password}`).toString("base64")}`,
+      },
+      responseType: "json",
+      throwHttpErrors: false,
+    }
+  )
+
+  console.log(response.body)
+  return response
+}
+
 export async function wait(ms: number) {
   return new Promise((res) => {
     setTimeout(() => res(true), ms)
