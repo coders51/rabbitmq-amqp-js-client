@@ -102,6 +102,22 @@ async function getExchangeInfo(exchange: string): Promise<Response<QueueInfoResp
   return response
 }
 
+export async function deleteExchange(exchange: string): Promise<Response<unknown>> {
+  const response = await got.delete(`http://${host}:${managementPort}/api/exchanges/${vhost}/${exchange}`, {
+    headers: {
+      Authorization: `Basic ${Buffer.from(`${username}:${password}`).toString("base64")}`,
+    },
+    searchParams: {
+      "if-unused": true,
+    },
+    responseType: "json",
+    throwHttpErrors: false,
+  })
+
+  console.log(response.body)
+  return response
+}
+
 export async function wait(ms: number) {
   return new Promise((res) => {
     setTimeout(() => res(true), ms)

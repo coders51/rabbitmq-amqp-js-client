@@ -4,6 +4,7 @@ import {
   createQueue,
   eventually,
   existsExchange,
+  deleteExchange,
   existsQueue,
   getQueueInfo,
   host,
@@ -19,6 +20,8 @@ describe("Management", () => {
   let connection: Connection
   let management: Management
 
+  const exchangeName = "test-exchange"
+
   beforeEach(async () => {
     environment = createEnvironment({
       host,
@@ -28,6 +31,7 @@ describe("Management", () => {
     })
     connection = await environment.createConnection()
     management = connection.management()
+    await deleteExchange(exchangeName)
   })
 
   afterEach(async () => {
@@ -35,6 +39,7 @@ describe("Management", () => {
       await management.close()
       await connection.close()
       await environment.close()
+      await deleteExchange(exchangeName)
     } catch (error) {
       console.error(error)
     }
@@ -67,8 +72,7 @@ describe("Management", () => {
     })
   })
 
-  test.skip("create an exchange through the management", async () => {
-    const exchangeName = "test-exchange"
+  test("create an exchange through the management", async () => {
     const exchangeInfo = management.declareExchange(exchangeName, {
       type: "headers",
       auto_delete: true,
