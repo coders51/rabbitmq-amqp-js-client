@@ -181,14 +181,6 @@ export class AmqpManagement implements Management {
       subject: "DELETE",
       body: null,
     })
-    // public Task DeleteAsync()
-    // {
-    //     string path = $"/{Consts.Exchanges}/{Utils.EncodePathSegment(_name)}";
-    //     string method = AmqpManagement.Delete;
-    //     int[] expectedResponseCodes = new int[] { AmqpManagement.Code204 };
-    //     _topologyListener.ExchangeDeleted(_name);
-    //     return (Task)_management.RequestAsync(null, path, method, expectedResponseCodes);
-    // }
   }
 }
 
