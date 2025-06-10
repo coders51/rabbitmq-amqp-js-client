@@ -102,6 +102,26 @@ async function getExchangeInfo(exchange: string): Promise<Response<QueueInfoResp
   return response
 }
 
+export async function createExchange(exchange: string): Promise<Response<unknown>> {
+  const response = await got.put(`http://${host}:${managementPort}/api/exchanges/${vhost}/${exchange}`, {
+    headers: {
+      Authorization: `Basic ${Buffer.from(`${username}:${password}`).toString("base64")}`,
+    },
+    responseType: "json",
+    throwHttpErrors: false,
+    json: {
+      type: "direct",
+      auto_delete: false,
+      durable: false,
+      internal: false,
+      arguments: {},
+    },
+  })
+
+  console.log(response.body)
+  return response
+}
+
 export async function deleteExchange(exchange: string): Promise<Response<unknown>> {
   const response = await got.delete(`http://${host}:${managementPort}/api/exchanges/${vhost}/${exchange}`, {
     headers: {

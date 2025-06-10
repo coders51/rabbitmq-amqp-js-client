@@ -32,6 +32,7 @@ export interface Management {
   declareQueue: (queueName: string, options?: Partial<QueueOptions>) => Promise<Queue>
   deleteQueue: (queueName: string) => Promise<boolean>
   declareExchange: (exchangeName: string, options: Partial<ExchangeOptions>) => ExchangeInfo
+  deleteExchange: (exchangeName: string) => void
   close: () => void
 }
 
@@ -170,6 +171,24 @@ export class AmqpManagement implements Management {
     })
 
     return new AmqpExchangeInfo({ name: exchangeName })
+  }
+
+  deleteExchange(exchangeName: string) {
+    this.senderLink.send({
+      message_id: generate_uuid(),
+      to: `/exchanges/${encodeURIComponent(exchangeName)}`,
+      reply_to: "$me",
+      subject: "DELETE",
+      body: null,
+    })
+    // public Task DeleteAsync()
+    // {
+    //     string path = $"/{Consts.Exchanges}/{Utils.EncodePathSegment(_name)}";
+    //     string method = AmqpManagement.Delete;
+    //     int[] expectedResponseCodes = new int[] { AmqpManagement.Code204 };
+    //     _topologyListener.ExchangeDeleted(_name);
+    //     return (Task)_management.RequestAsync(null, path, method, expectedResponseCodes);
+    // }
   }
 }
 

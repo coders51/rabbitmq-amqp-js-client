@@ -2,10 +2,11 @@ import { Management } from "../../src/index.js"
 import { afterEach, beforeEach, describe, expect, test } from "vitest"
 import {
   createQueue,
+  existsQueue,
   eventually,
+  createExchange,
   existsExchange,
   deleteExchange,
-  existsQueue,
   getQueueInfo,
   host,
   password,
@@ -82,6 +83,32 @@ describe("Management", () => {
     expect(exchangeInfo.name).to.eql(exchangeName)
     await eventually(async () => {
       expect(await existsExchange(exchangeInfo.name)).to.eql(true)
+    })
+  })
+
+  test("create an exchange through the management", async () => {
+    const exchangeInfo = management.declareExchange(exchangeName, {
+      type: "headers",
+      auto_delete: true,
+      durable: false,
+    })
+
+    expect(exchangeInfo.name).to.eql(exchangeName)
+    await eventually(async () => {
+      expect(await existsExchange(exchangeInfo.name)).to.eql(true)
+    })
+  })
+
+  test("delete an exchange through the management", async () => {
+    await createExchange(exchangeName)
+    await eventually(async () => {
+      expect(await existsExchange(exchangeName)).to.eql(true)
+    })
+
+    management.deleteExchange(exchangeName)
+
+    await eventually(async () => {
+      expect(await existsExchange(exchangeName)).to.eql(false)
     })
   })
 })
