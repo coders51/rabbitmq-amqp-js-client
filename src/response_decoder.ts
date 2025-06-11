@@ -3,7 +3,7 @@ import { AUTO_DELETE, DURABLE, EXCLUSIVE, isError, queueTypeFromString, Result }
 import { DeletedQueueInfo, QueueInfo } from "./queue.js"
 
 interface ResponseDecoder {
-  decodeFrom: (receivedMessage: Message, sentMessageId: string) => unknown
+  decodeFrom: (receivedMessage: Message, sentMessageId: string) => Result<unknown, Error>
 }
 
 export class CreateQueueResponseDecoder implements ResponseDecoder {
