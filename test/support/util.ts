@@ -9,6 +9,14 @@ export type ConnectionInfoResponse = {
 
 export type QueueInfoResponse = {
   name: string
+  node: string
+  messages: number
+  consumers: number
+  arguments: Record<string, string>
+  auto_delete: boolean
+  durable: boolean
+  exclusive: boolean
+  type: string
 }
 
 export const host = process.env.RABBITMQ_HOSTNAME ?? "localhost"
@@ -40,7 +48,7 @@ export async function existsQueue(queueName: string): Promise<boolean> {
   return response.ok
 }
 
-async function getQueueInfo(queue: string): Promise<Response<QueueInfoResponse>> {
+export async function getQueueInfo(queue: string): Promise<Response<QueueInfoResponse>> {
   const response = await got.get<QueueInfoResponse>(`http://${host}:${managementPort}/api/queues/${vhost}/${queue}`, {
     headers: {
       Authorization: `Basic ${Buffer.from(`${username}:${password}`).toString("base64")}`,
@@ -50,6 +58,20 @@ async function getQueueInfo(queue: string): Promise<Response<QueueInfoResponse>>
   })
 
   return response
+}
+
+export async function createQueue(queue: string): Promise<boolean> {
+  const response = await got.put(`http://${host}:${managementPort}/api/queues/${vhost}/${queue}`, {
+    headers: {
+      Authorization: `Basic ${Buffer.from(`${username}:${password}`).toString("base64")}`,
+    },
+    json: {
+      name: queue,
+    },
+    throwHttpErrors: false,
+  })
+
+  return response.ok
 }
 
 export async function wait(ms: number) {

@@ -1,21 +1,59 @@
+import { Management } from "../../src/index.js"
 import { afterEach, beforeEach, describe, expect, test } from "vitest"
-import { AmqpManagement, Management } from "../../src/index.js"
-import { existsQueue } from "../support/util.js"
+import { createQueue, eventually, existsQueue, getQueueInfo, host, password, port, username } from "../support/util.js"
+import { createEnvironment, Environment } from "../../src/environment.js"
+import { Connection } from "../../src/connection.js"
 
-describe.skip("Management", () => {
+describe("Management", () => {
+  let environment: Environment
+  let connection: Connection
   let management: Management
 
-  beforeEach(() => {
-    management = new AmqpManagement()
+  beforeEach(async () => {
+    environment = createEnvironment({
+      host,
+      port,
+      username,
+      password,
+    })
+    connection = await environment.createConnection()
+    management = connection.management()
   })
 
-  afterEach(() => {
-    management.close()
+  afterEach(async () => {
+    try {
+      await management.close()
+      await connection.close()
+      await environment.close()
+    } catch (error) {
+      console.error(error)
+    }
   })
 
   test("create a queue through the management", async () => {
-    const queue = management.queue("test-coda").exclusive(true).autoDelete(true).declare()
+    const queue = await management.declareQueue("test-queue")
 
-    expect(await existsQueue(queue.name)).to.eql(true)
+    await eventually(async () => {
+      const queueInfo = await getQueueInfo(queue.getInfo.name)
+      expect(queueInfo.ok).to.eql(true)
+      expect(queue.getInfo.arguments).to.eql(queueInfo.body.arguments)
+      expect(queue.getInfo.autoDelete).to.eql(queueInfo.body.auto_delete)
+      expect(queue.getInfo.durable).to.eql(queueInfo.body.durable)
+      expect(queue.getInfo.exclusive).to.eql(queueInfo.body.exclusive)
+      expect(queue.getInfo.consumerCount).to.eql(queueInfo.body.consumers)
+      expect(queue.getInfo.messageCount).to.eql(queueInfo.body.messages)
+      expect(queue.getInfo.type).to.eql(queueInfo.body.type)
+      expect(queue.getInfo.leader).to.eql(queueInfo.body.node)
+    })
+  })
+
+  test("delete a queue through the management", async () => {
+    await createQueue("test-queue")
+
+    await management.deleteQueue("test-queue")
+
+    await eventually(async () => {
+      expect(await existsQueue("test-queue")).to.eql(false)
+    })
   })
 })

@@ -1,53 +1,39 @@
-export interface QueueInfo {
+export type QueueType = "classic" | "stream" | "quorum"
+
+export type QueueOptions = {
+  type: QueueType
+  exclusive: boolean
+  autoDelete: boolean
+  durable: boolean
+  arguments: Record<string, string>
+}
+
+export type QueueInfo = {
   name: string
+  durable: boolean
+  autoDelete: boolean
+  exclusive: boolean
+  type: QueueType
+  leader: string
+  replicas: string[]
+  messageCount: number
+  consumerCount: number
+  arguments: Record<string, string>
 }
 
-export class AmqpQueueInfo implements QueueInfo {
-  private queueName: string
-
-  constructor(params: { name: string; exclusive: boolean; autoDelete: boolean }) {
-    this.queueName = params.name
-  }
-
-  public get name(): string {
-    return this.queueName
-  }
+export type DeletedQueueInfo = {
+  name: string
+  deleted: boolean
 }
 
-export interface QueueSpec {
-  name: (queueName: string) => QueueSpec
-  exclusive: (isExclusive: boolean) => QueueSpec
-  autoDelete: (isAutoDelete: boolean) => QueueSpec
-  declare: () => QueueInfo
+export interface Queue {
+  getInfo: QueueInfo
 }
 
-export class AmqpQueueSpec implements QueueSpec {
-  private queueName: string
-  private isExclusive: boolean
-  private isAutoDelete: boolean
+export class AmqpQueue implements Queue {
+  constructor(private readonly info: QueueInfo) {}
 
-  constructor() {
-    this.queueName = "default-queue-name"
-    this.isExclusive = false
-    this.isAutoDelete = false
-  }
-
-  name(queueName: string): QueueSpec {
-    this.queueName = queueName
-    return this
-  }
-
-  exclusive(isExclusive: boolean): QueueSpec {
-    this.isExclusive = isExclusive
-    return this
-  }
-
-  autoDelete(isAutoDelete: boolean): QueueSpec {
-    this.isAutoDelete = isAutoDelete
-    return this
-  }
-
-  declare(): QueueInfo {
-    return new AmqpQueueInfo({ name: this.queueName, exclusive: this.isExclusive, autoDelete: this.isAutoDelete })
+  public get getInfo(): QueueInfo {
+    return this.info
   }
 }
