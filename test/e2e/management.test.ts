@@ -12,6 +12,7 @@ import {
   password,
   port,
   username,
+  getExchangeInfo,
 } from "../support/util.js"
 import { createEnvironment, Environment } from "../../src/environment.js"
 import { Connection } from "../../src/connection.js"
@@ -74,15 +75,20 @@ describe("Management", () => {
   })
 
   test("create an exchange through the management", async () => {
-    const exchangeInfo = management.declareExchange(exchangeName, {
+    const exchange = await management.declareExchange(exchangeName, {
       type: "headers",
       auto_delete: true,
       durable: false,
     })
 
-    expect(exchangeInfo.name).to.eql(exchangeName)
     await eventually(async () => {
-      expect(await existsExchange(exchangeInfo.name)).to.eql(true)
+      const exchangeInfo = await getExchangeInfo(exchange.getInfo.name)
+      expect(exchangeInfo.ok).to.eql(true)
+      expect(exchange.getInfo.name).to.eql(exchangeInfo.body.name)
+      expect(exchange.getInfo.arguments).to.eql(exchangeInfo.body.arguments)
+      expect(exchange.getInfo.autoDelete).to.eql(exchangeInfo.body.auto_delete)
+      expect(exchange.getInfo.durable).to.eql(exchangeInfo.body.durable)
+      expect(exchange.getInfo.type).to.eql(exchangeInfo.body.type)
     })
   })
 
@@ -92,10 +98,11 @@ describe("Management", () => {
       expect(await existsExchange(exchangeName)).to.eql(true)
     })
 
-    management.deleteExchange(exchangeName)
+    const result = await management.deleteExchange(exchangeName)
 
     await eventually(async () => {
       expect(await existsExchange(exchangeName)).to.eql(false)
+      expect(result).eql(true)
     })
   })
 })

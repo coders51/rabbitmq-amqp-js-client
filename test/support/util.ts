@@ -19,6 +19,14 @@ export type QueueInfoResponse = {
   type: string
 }
 
+export type ExchangeInfoResponse = {
+  name: string
+  arguments: Record<string, string>
+  auto_delete: boolean
+  durable: boolean
+  type: string
+}
+
 export const host = process.env.RABBITMQ_HOSTNAME ?? "localhost"
 export const port = parseInt(process.env.RABBITMQ_PORT ?? "5672")
 export const managementPort = 15672
@@ -86,8 +94,8 @@ export async function existsExchange(exchangeName: string): Promise<boolean> {
   return response.ok
 }
 
-async function getExchangeInfo(exchange: string): Promise<Response<QueueInfoResponse>> {
-  const response = await got.get<QueueInfoResponse>(
+export async function getExchangeInfo(exchange: string): Promise<Response<ExchangeInfoResponse>> {
+  const response = await got.get<ExchangeInfoResponse>(
     `http://${host}:${managementPort}/api/exchanges/${vhost}/${exchange}`,
     {
       headers: {

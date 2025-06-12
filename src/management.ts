@@ -1,4 +1,4 @@
-import { AmqpExchangeInfo, ExchangeInfo, ExchangeOptions } from "./exchange.js"
+import { AmqpExchange, Exchange, ExchangeInfo, ExchangeOptions } from "./exchange.js"
 import { AmqpQueue, Queue, QueueOptions, QueueType } from "./queue.js"
 import {
   EventContext,
@@ -11,7 +11,12 @@ import {
   SenderOptions,
 } from "rhea"
 import { AmqpEndpoints, AmqpMethods, MessageBuilder, ME } from "./message_builder.js"
-import { CreateQueueResponseDecoder, DeleteQueueResponseDecoder } from "./response_decoder.js"
+import {
+  CreateExchangeResponseDecoder,
+  CreateQueueResponseDecoder,
+  DeleteExchangeResponseDecoder,
+  DeleteQueueResponseDecoder,
+} from "./response_decoder.js"
 
 type LinkOpenEvents = SenderEvents.senderOpen | ReceiverEvents.receiverOpen
 type LinkErrorEvents = SenderEvents.senderError | ReceiverEvents.receiverError
@@ -31,8 +36,8 @@ const MANAGEMENT_NODE_CONFIGURATION: SenderOptions | ReceiverOptions = {
 export interface Management {
   declareQueue: (queueName: string, options?: Partial<QueueOptions>) => Promise<Queue>
   deleteQueue: (queueName: string) => Promise<boolean>
-  declareExchange: (exchangeName: string, options: Partial<ExchangeOptions>) => ExchangeInfo
-  deleteExchange: (exchangeName: string) => void
+  declareExchange: (exchangeName: string, options: Partial<ExchangeOptions>) => Promise<Exchange>
+  deleteExchange: (exchangeName: string) => Promise<boolean>
   close: () => void
 }
 
@@ -158,28 +163,64 @@ export class AmqpManagement implements Management {
     })
   }
 
-  declareExchange(exchangeName: string, options: Partial<ExchangeOptions> = {}): ExchangeInfo {
-    // decode the response
-    // create queueInfo
+  declareExchange(exchangeName: string, options: Partial<ExchangeOptions> = {}): Promise<Exchange> {
+    const exchangeInfo: ExchangeInfo = {
+      type: options.type ?? "direct",
+      arguments: options.arguments ?? {},
+      autoDelete: options.auto_delete ?? false,
+      durable: options.durable ?? false,
+      name: exchangeName,
+    }
+    return new Promise((res, rej) => {
+      this.receiverLink.once(ReceiverEvents.message, (context: EventContext) => {
+        if (!context.message) {
+          return rej(new Error("Receiver has not received any message"))
+        }
 
-    this.senderLink.send({
-      message_id: generate_uuid(),
-      to: `/exchanges/${encodeURIComponent(exchangeName)}`,
-      reply_to: "$me",
-      subject: "PUT",
-      body: options,
+        const response = new CreateExchangeResponseDecoder().decodeFrom(context.message, String(message.message_id))
+        if (response.status === "error") {
+          return rej(response.error)
+        }
+
+        return res(new AmqpExchange(exchangeInfo))
+      })
+
+      const message = new MessageBuilder()
+        .sendTo(`/${AmqpEndpoints.Exchanges}/${encodeURIComponent(exchangeName)}`)
+        .setReplyTo(ME)
+        .setAmqpMethod(AmqpMethods.PUT)
+        .setBody({
+          type: options.type,
+          durable: options.durable ?? false,
+          auto_delete: options.auto_delete ?? false,
+        })
+        .build()
+
+      this.senderLink.send(message)
     })
-
-    return new AmqpExchangeInfo({ name: exchangeName })
   }
 
-  deleteExchange(exchangeName: string) {
-    this.senderLink.send({
-      message_id: generate_uuid(),
-      to: `/exchanges/${encodeURIComponent(exchangeName)}`,
-      reply_to: "$me",
-      subject: "DELETE",
-      body: null,
+  deleteExchange(exchangeName: string): Promise<boolean> {
+    return new Promise((res, rej) => {
+      this.receiverLink.once(ReceiverEvents.message, (context: EventContext) => {
+        if (!context.message) {
+          return rej(new Error("Receiver has not received any message"))
+        }
+
+        const response = new DeleteExchangeResponseDecoder().decodeFrom(context.message, String(message.message_id))
+        if (response.status === "error") {
+          return rej(response.error)
+        }
+
+        return res(true)
+      })
+
+      const message = new MessageBuilder()
+        .sendTo(`/${AmqpEndpoints.Exchanges}/${encodeURIComponent(exchangeName)}`)
+        .setReplyTo(ME)
+        .setAmqpMethod(AmqpMethods.DELETE)
+        .build()
+      this.senderLink.send(message)
     })
   }
 }

@@ -1,6 +1,7 @@
 export type ExchangeType = "direct" | "fanout" | "topic" | "headers"
 
 export type ExchangeOptions = {
+  arguments: Record<string, string>
   auto_delete: boolean
   durable: boolean
   type: ExchangeType
@@ -8,16 +9,25 @@ export type ExchangeOptions = {
 
 export interface ExchangeInfo {
   name: string
+  arguments: Record<string, string>
+  autoDelete: boolean
+  durable: boolean
+  type: string
 }
 
-export class AmqpExchangeInfo implements ExchangeInfo {
-  private exchangeName: string
+export interface Exchange {
+  getInfo: ExchangeInfo
+}
 
-  constructor(params: { name: string }) {
-    this.exchangeName = params.name
-  }
+export type DeletedExchangeInfo = {
+  name: string
+  deleted: boolean
+}
 
-  public get name(): string {
-    return this.exchangeName
+export class AmqpExchange implements Exchange {
+  constructor(private readonly info: ExchangeInfo) {}
+
+  public get getInfo(): ExchangeInfo {
+    return this.info
   }
 }
