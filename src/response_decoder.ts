@@ -6,6 +6,19 @@ interface ResponseDecoder {
   decodeFrom: (receivedMessage: Message, sentMessageId: string) => Result<unknown, Error>
 }
 
+class VoidResponseDecoder implements ResponseDecoder {
+  decodeFrom(receivedMessage: Message, sentMessageId: string): Result<void, Error> {
+    if (isError(receivedMessage) || sentMessageId !== receivedMessage.correlation_id) {
+      return { status: "error", error: new Error(`Message Error: ${receivedMessage.subject}`) }
+    }
+
+    return {
+      status: "ok",
+      body: undefined,
+    }
+  }
+}
+
 export class CreateQueueResponseDecoder implements ResponseDecoder {
   decodeFrom(receivedMessage: Message, sentMessageId: string): Result<QueueInfo, Error> {
     if (isError(receivedMessage) || sentMessageId !== receivedMessage.correlation_id) {
@@ -46,28 +59,6 @@ export class DeleteQueueResponseDecoder implements ResponseDecoder {
   }
 }
 
-export class CreateExchangeResponseDecoder implements ResponseDecoder {
-  decodeFrom(receivedMessage: Message, sentMessageId: string): Result<void, Error> {
-    if (isError(receivedMessage) || sentMessageId !== receivedMessage.correlation_id) {
-      return { status: "error", error: new Error(`Message Error: ${receivedMessage.subject}`) }
-    }
+export class CreateExchangeResponseDecoder extends VoidResponseDecoder {}
 
-    return {
-      status: "ok",
-      body: undefined,
-    }
-  }
-}
-
-export class DeleteExchangeResponseDecoder implements ResponseDecoder {
-  decodeFrom(receivedMessage: Message, sentMessageId: string): Result<void, Error> {
-    if (isError(receivedMessage) || sentMessageId !== receivedMessage.correlation_id) {
-      return { status: "error", error: new Error(`Message Error: ${receivedMessage.subject}`) }
-    }
-
-    return {
-      status: "ok",
-      body: undefined,
-    }
-  }
-}
+export class DeleteExchangeResponseDecoder extends VoidResponseDecoder {}

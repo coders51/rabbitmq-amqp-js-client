@@ -12,7 +12,7 @@ export interface ExchangeInfo {
   arguments: Record<string, string>
   autoDelete: boolean
   durable: boolean
-  type: string
+  type: ExchangeType
 }
 
 export interface Exchange {
