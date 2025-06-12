@@ -8,6 +8,7 @@ export enum AmqpMethods {
 
 export enum AmqpEndpoints {
   Queues = "queues",
+  Exchanges = "exchanges",
 }
 
 export const ME = "$me"

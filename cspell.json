@@ -4,6 +4,7 @@
     "ackmode",
     "ampq",
     "amqpvalue",
+    "fanout",
     "perftest",
     "prefetch",
     "RABBITMQ",

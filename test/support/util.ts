@@ -19,6 +19,14 @@ export type QueueInfoResponse = {
   type: string
 }
 
+export type ExchangeInfoResponse = {
+  name: string
+  arguments: Record<string, string>
+  auto_delete: boolean
+  durable: boolean
+  type: string
+}
+
 export const host = process.env.RABBITMQ_HOSTNAME ?? "localhost"
 export const port = parseInt(process.env.RABBITMQ_PORT ?? "5672")
 export const managementPort = 15672
@@ -72,6 +80,70 @@ export async function createQueue(queue: string): Promise<boolean> {
   })
 
   return response.ok
+}
+
+export async function existsExchange(exchangeName: string): Promise<boolean> {
+  const response = await getExchangeInfo(exchangeName)
+
+  if (!response.ok) {
+    if (response.statusCode === 404) return false
+
+    throw new Error(`HTTPError: ${inspect(response)}`)
+  }
+
+  return response.ok
+}
+
+export async function getExchangeInfo(exchange: string): Promise<Response<ExchangeInfoResponse>> {
+  const response = await got.get<ExchangeInfoResponse>(
+    `http://${host}:${managementPort}/api/exchanges/${vhost}/${exchange}`,
+    {
+      headers: {
+        Authorization: `Basic ${Buffer.from(`${username}:${password}`).toString("base64")}`,
+      },
+      responseType: "json",
+      throwHttpErrors: false,
+    }
+  )
+
+  console.log(response.body)
+  return response
+}
+
+export async function createExchange(exchange: string): Promise<Response<unknown>> {
+  const response = await got.put(`http://${host}:${managementPort}/api/exchanges/${vhost}/${exchange}`, {
+    headers: {
+      Authorization: `Basic ${Buffer.from(`${username}:${password}`).toString("base64")}`,
+    },
+    responseType: "json",
+    throwHttpErrors: false,
+    json: {
+      type: "direct",
+      auto_delete: false,
+      durable: false,
+      internal: false,
+      arguments: {},
+    },
+  })
+
+  console.log(response.body)
+  return response
+}
+
+export async function deleteExchange(exchange: string): Promise<Response<unknown>> {
+  const response = await got.delete(`http://${host}:${managementPort}/api/exchanges/${vhost}/${exchange}`, {
+    headers: {
+      Authorization: `Basic ${Buffer.from(`${username}:${password}`).toString("base64")}`,
+    },
+    searchParams: {
+      "if-unused": true,
+    },
+    responseType: "json",
+    throwHttpErrors: false,
+  })
+
+  console.log(response.body)
+  return response
 }
 
 export async function wait(ms: number) {
