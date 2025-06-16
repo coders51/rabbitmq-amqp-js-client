@@ -12,11 +12,7 @@ This library is meant to be used with RabbitMQ 4.0.
 
 - [Getting started](#getting-started)
 
-- [Build from source](#build-from-source)
-
 - [Resources](#resources)
-
-- [Roadmap](#roadmap)
 
 ## Installing via npm
 
