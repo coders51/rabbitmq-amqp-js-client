@@ -27,6 +27,16 @@ export type ExchangeInfoResponse = {
   type: string
 }
 
+export type BindingInfoResponse = {
+  source: string
+  vhost: string
+  destination: string
+  destination_type: string
+  routing_key: string
+  arguments: Record<string, string>
+  properties_key: string
+}
+
 export const host = process.env.RABBITMQ_HOSTNAME ?? "localhost"
 export const port = parseInt(process.env.RABBITMQ_PORT ?? "5672")
 export const managementPort = 15672
@@ -82,6 +92,34 @@ export async function createQueue(queue: string): Promise<boolean> {
   return response.ok
 }
 
+export async function deleteQueue(queue: string): Promise<Response<unknown>> {
+  const response = await got.delete(`http://${host}:${managementPort}/api/queues/${vhost}/${queue}`, {
+    headers: {
+      Authorization: `Basic ${Buffer.from(`${username}:${password}`).toString("base64")}`,
+    },
+    responseType: "json",
+    throwHttpErrors: false,
+  })
+
+  return response
+}
+
+async function getQueues(): Promise<QueueInfoResponse[]> {
+  const ret = await got.get<QueueInfoResponse[]>(`http://${host}:${managementPort}/api/queues/${vhost}`, {
+    headers: {
+      Authorization: `Basic ${Buffer.from(`${username}:${password}`).toString("base64")}`,
+    },
+    responseType: "json",
+  })
+
+  return ret.body
+}
+
+export async function deleteAllQueues({ match }: { match: RegExp } = { match: /.*/ }): Promise<void> {
+  const queues = await getQueues()
+  await Promise.all(queues.filter((q) => match && q.name.match(match)).map((q) => deleteQueue(q.name)))
+}
+
 export async function existsExchange(exchangeName: string): Promise<boolean> {
   const response = await getExchangeInfo(exchangeName)
 
@@ -106,7 +144,6 @@ export async function getExchangeInfo(exchange: string): Promise<Response<Exchan
     }
   )
 
-  console.log(response.body)
   return response
 }
 
@@ -126,7 +163,6 @@ export async function createExchange(exchange: string): Promise<Response<unknown
     },
   })
 
-  console.log(response.body)
   return response
 }
 
@@ -135,15 +171,114 @@ export async function deleteExchange(exchange: string): Promise<Response<unknown
     headers: {
       Authorization: `Basic ${Buffer.from(`${username}:${password}`).toString("base64")}`,
     },
-    searchParams: {
-      "if-unused": true,
+    responseType: "json",
+    throwHttpErrors: false,
+  })
+
+  return response
+}
+
+async function getExchanges(): Promise<ExchangeInfoResponse[]> {
+  const ret = await got.get<ExchangeInfoResponse[]>(`http://${host}:${managementPort}/api/exchanges/${vhost}`, {
+    headers: {
+      Authorization: `Basic ${Buffer.from(`${username}:${password}`).toString("base64")}`,
+    },
+    responseType: "json",
+  })
+
+  return ret.body
+}
+
+export async function deleteAllExchanges({ match }: { match: RegExp } = { match: /.*/ }): Promise<void> {
+  const exchanges = await getExchanges()
+  await Promise.all(exchanges.filter((e) => match && e.name.match(match)).map((e) => deleteExchange(e.name)))
+}
+
+export async function existsBinding(params: {
+  source: string
+  destination: string
+  type: "exchangeToQueue" | "exchangeToExchange"
+}): Promise<boolean> {
+  const response = await getBinging(params)
+
+  if (!response.ok) {
+    if (response.statusCode === 404) return false
+
+    throw new Error(`HTTPError: ${inspect(response)}`)
+  }
+
+  return response.body.length > 0
+}
+
+export async function getBinging(params: {
+  source: string
+  destination: string
+  type: "exchangeToQueue" | "exchangeToExchange"
+}): Promise<Response<BindingInfoResponse[]>> {
+  const response = await got.get<BindingInfoResponse[]>(buildBindingEndpointFrom(params), {
+    headers: {
+      Authorization: `Basic ${Buffer.from(`${username}:${password}`).toString("base64")}`,
     },
     responseType: "json",
     throwHttpErrors: false,
   })
 
-  console.log(response.body)
   return response
+}
+
+function buildBindingEndpointFrom(params: {
+  source: string
+  destination: string
+  type: "exchangeToQueue" | "exchangeToExchange"
+}): string {
+  const queueOrExchange = params.type === "exchangeToQueue" ? "q" : "e"
+  return `http://${host}:${managementPort}/api/bindings/${vhost}/e/${params.source}/${queueOrExchange}/${params.destination}`
+}
+
+export async function deleteBinding(params: {
+  source: string
+  destination: string
+  type: "exchangeToQueue" | "exchangeToExchange"
+}): Promise<Response<unknown>> {
+  const response = await got.delete(buildBindingEndpointFrom(params), {
+    headers: {
+      Authorization: `Basic ${Buffer.from(`${username}:${password}`).toString("base64")}`,
+    },
+    responseType: "json",
+    throwHttpErrors: false,
+  })
+
+  return response
+}
+
+async function getBindings(): Promise<BindingInfoResponse[]> {
+  const ret = await got.get<BindingInfoResponse[]>(`http://${host}:${managementPort}/api/bindings/${vhost}`, {
+    headers: {
+      Authorization: `Basic ${Buffer.from(`${username}:${password}`).toString("base64")}`,
+    },
+    responseType: "json",
+  })
+
+  return ret.body
+}
+
+export async function deleteAllBindings(): Promise<void> {
+  const bindings = await getBindings()
+  await Promise.all(
+    bindings.map((b) =>
+      deleteBinding({
+        source: b.source,
+        destination: b.destination,
+        type: b.destination_type === "queue" ? "exchangeToQueue" : "exchangeToExchange",
+      })
+    )
+  )
+}
+
+export async function cleanRabbit({ match }: { match: RegExp } = { match: /.*/ }): Promise<void> {
+  await deleteAllQueues({ match })
+  await deleteAllExchanges({ match })
+  await deleteAllBindings()
 }
 
 export async function wait(ms: number) {

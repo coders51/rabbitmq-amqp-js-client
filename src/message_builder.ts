@@ -1,6 +1,7 @@
 import { generate_uuid, Message } from "rhea"
 
 export enum AmqpMethods {
+  POST = "POST",
   PUT = "PUT",
   DELETE = "DELETE",
   GET = "GET",
@@ -9,6 +10,7 @@ export enum AmqpMethods {
 export enum AmqpEndpoints {
   Queues = "queues",
   Exchanges = "exchanges",
+  Bindings = "bindings",
 }
 
 export const ME = "$me"

@@ -4,6 +4,8 @@
     "ackmode",
     "ampq",
     "amqpvalue",
+    "dste",
+    "dstq",
     "fanout",
     "perftest",
     "prefetch",
