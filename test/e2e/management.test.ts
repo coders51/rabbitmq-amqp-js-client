@@ -6,13 +6,14 @@ import {
   eventually,
   createExchange,
   existsExchange,
-  deleteExchange,
   getQueueInfo,
   host,
   password,
   port,
   username,
   getExchangeInfo,
+  existsBinding,
+  cleanRabbit,
 } from "../support/util.js"
 import { createEnvironment, Environment } from "../../src/environment.js"
 import { Connection } from "../../src/connection.js"
@@ -23,6 +24,8 @@ describe("Management", () => {
   let management: Management
 
   const exchangeName = "test-exchange"
+  const queueName = "test-queue"
+  const bindingKey = "test-binding"
 
   beforeEach(async () => {
     environment = createEnvironment({
@@ -33,22 +36,22 @@ describe("Management", () => {
     })
     connection = await environment.createConnection()
     management = connection.management()
-    await deleteExchange(exchangeName)
+    await cleanRabbit({ match: /test-/ })
   })
 
   afterEach(async () => {
     try {
-      await management.close()
+      await cleanRabbit({ match: /test-/ })
+      management.close()
       await connection.close()
       await environment.close()
-      await deleteExchange(exchangeName)
     } catch (error) {
       console.error(error)
     }
   })
 
   test("create a queue through the management", async () => {
-    const queue = await management.declareQueue("test-queue")
+    const queue = await management.declareQueue(queueName)
 
     await eventually(async () => {
       const queueInfo = await getQueueInfo(queue.getInfo.name)
@@ -65,12 +68,13 @@ describe("Management", () => {
   })
 
   test("delete a queue through the management", async () => {
-    await createQueue("test-queue")
+    await createQueue(queueName)
 
-    await management.deleteQueue("test-queue")
+    const result = await management.deleteQueue(queueName)
 
     await eventually(async () => {
-      expect(await existsQueue("test-queue")).to.eql(false)
+      expect(await existsQueue(queueName)).to.eql(false)
+      expect(result).to.eql(true)
     })
   })
 
@@ -103,6 +107,62 @@ describe("Management", () => {
     await eventually(async () => {
       expect(await existsExchange(exchangeName)).to.eql(false)
       expect(result).eql(true)
+    })
+  })
+
+  test("create a binding from exchange to queue through the management", async () => {
+    const exchange = await management.declareExchange(exchangeName)
+    const queue = await management.declareQueue(queueName)
+
+    await management.bind(bindingKey, { source: exchange, destination: queue })
+
+    await eventually(async () => {
+      expect(await existsBinding({ source: exchangeName, destination: queueName, type: "exchangeToQueue" })).to.eql(
+        true
+      )
+    })
+  })
+
+  test("create a binding from exchange to exchange through the management", async () => {
+    const exchange1 = await management.declareExchange(exchangeName)
+    const exchange2 = await management.declareExchange(exchangeName + "-2")
+
+    await management.bind(bindingKey, { source: exchange1, destination: exchange2 })
+
+    await eventually(async () => {
+      expect(
+        await existsBinding({ source: exchangeName, destination: exchangeName + "-2", type: "exchangeToExchange" })
+      ).to.eql(true)
+    })
+  })
+
+  test("delete a binding from exchange to queue with no arguments through the management", async () => {
+    const exchange = await management.declareExchange(exchangeName)
+    const queue = await management.declareQueue(queueName)
+
+    await management.unbind(bindingKey, { source: exchange, destination: queue })
+
+    await eventually(async () => {
+      expect(await existsBinding({ source: exchangeName, destination: queueName, type: "exchangeToQueue" })).to.eql(
+        false
+      )
+      expect(await existsQueue(queue.getInfo.name)).to.eql(true)
+      expect(await existsExchange(exchange.getInfo.name)).to.eql(true)
+    })
+  })
+
+  test("delete a binding from exchange to exchange with no arguments through the management", async () => {
+    const exchange = await management.declareExchange(exchangeName)
+    const exchange2 = await management.declareExchange(exchangeName + "-2")
+
+    await management.unbind(bindingKey, { source: exchange, destination: exchange2 })
+
+    await eventually(async () => {
+      expect(
+        await existsBinding({ source: exchangeName, destination: exchangeName + "-2", type: "exchangeToExchange" })
+      ).to.eql(false)
+      expect(await existsExchange(exchange.getInfo.name)).to.eql(true)
+      expect(await existsExchange(exchangeName + "-2")).to.eql(true)
     })
   })
 })

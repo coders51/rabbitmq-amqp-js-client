@@ -12,11 +12,15 @@ import {
 } from "rhea"
 import { AmqpEndpoints, AmqpMethods, MessageBuilder, ME } from "./message_builder.js"
 import {
+  CreateBindingResponseDecoder,
   CreateExchangeResponseDecoder,
   CreateQueueResponseDecoder,
+  DeleteBindingResponseDecoder,
   DeleteExchangeResponseDecoder,
   DeleteQueueResponseDecoder,
 } from "./response_decoder.js"
+import { AmqpBinding, Binding, BindingInfo, BindingOptions } from "./binding.js"
+import { randomUUID } from "crypto"
 
 type LinkOpenEvents = SenderEvents.senderOpen | ReceiverEvents.receiverOpen
 type LinkErrorEvents = SenderEvents.senderError | ReceiverEvents.receiverError
@@ -36,8 +40,10 @@ const MANAGEMENT_NODE_CONFIGURATION: SenderOptions | ReceiverOptions = {
 export interface Management {
   declareQueue: (queueName: string, options?: Partial<QueueOptions>) => Promise<Queue>
   deleteQueue: (queueName: string) => Promise<boolean>
-  declareExchange: (exchangeName: string, options: Partial<ExchangeOptions>) => Promise<Exchange>
+  declareExchange: (exchangeName: string, options?: Partial<ExchangeOptions>) => Promise<Exchange>
   deleteExchange: (exchangeName: string) => Promise<boolean>
+  bind: (key: string, options: BindingOptions) => Promise<Binding>
+  unbind: (key: string, options: BindingOptions) => Promise<boolean>
   close: () => void
 }
 
@@ -52,9 +58,7 @@ export class AmqpManagement implements Management {
     private readonly connection: RheaConnection,
     private senderLink: Sender,
     private receiverLink: Receiver
-  ) {
-    console.log(this.receiverLink.is_open())
-  }
+  ) {}
 
   private static async openReceiver(connection: RheaConnection): Promise<Receiver> {
     return AmqpManagement.openLink<Receiver>(
@@ -163,12 +167,12 @@ export class AmqpManagement implements Management {
     })
   }
 
-  declareExchange(exchangeName: string, options: Partial<ExchangeOptions> = {}): Promise<Exchange> {
+  async declareExchange(exchangeName: string, options: Partial<ExchangeOptions> = {}): Promise<Exchange> {
     const exchangeInfo: ExchangeInfo = {
       type: options.type ?? "direct",
       arguments: options.arguments ?? {},
       autoDelete: options.auto_delete ?? false,
-      durable: options.durable ?? false,
+      durable: options.durable ?? true,
       name: exchangeName,
     }
     return new Promise((res, rej) => {
@@ -190,8 +194,8 @@ export class AmqpManagement implements Management {
         .setReplyTo(ME)
         .setAmqpMethod(AmqpMethods.PUT)
         .setBody({
-          type: options.type,
-          durable: options.durable ?? false,
+          type: options.type ?? "direct",
+          durable: options.durable ?? true,
           auto_delete: options.auto_delete ?? false,
         })
         .build()
@@ -200,7 +204,7 @@ export class AmqpManagement implements Management {
     })
   }
 
-  deleteExchange(exchangeName: string): Promise<boolean> {
+  async deleteExchange(exchangeName: string): Promise<boolean> {
     return new Promise((res, rej) => {
       this.receiverLink.once(ReceiverEvents.message, (context: EventContext) => {
         if (!context.message) {
@@ -223,8 +227,94 @@ export class AmqpManagement implements Management {
       this.senderLink.send(message)
     })
   }
+
+  async bind(key: string, options: BindingOptions): Promise<Binding> {
+    const bindingInfo: BindingInfo = {
+      id: randomUUID(),
+      source: options.source.getInfo.name,
+      destination: options.destination.getInfo.name,
+      arguments: options.arguments ?? {},
+    }
+    return new Promise((res, rej) => {
+      this.receiverLink.once(ReceiverEvents.message, (context: EventContext) => {
+        if (!context.message) {
+          return rej(new Error("Receiver has not received any message"))
+        }
+
+        const response = new CreateBindingResponseDecoder().decodeFrom(context.message, String(message.message_id))
+        if (response.status === "error") {
+          return rej(response.error)
+        }
+
+        return res(new AmqpBinding(bindingInfo))
+      })
+
+      const message = new MessageBuilder()
+        .sendTo(`/${AmqpEndpoints.Bindings}`)
+        .setReplyTo(ME)
+        .setAmqpMethod(AmqpMethods.POST)
+        .setBody({
+          source: options.source.getInfo.name,
+          binding_key: key,
+          arguments: options.arguments ?? {},
+          ...buildBindingDestinationFrom(options.destination),
+        })
+        .build()
+      this.senderLink.send(message)
+    })
+  }
+
+  async unbind(key: string, options: BindingOptions): Promise<boolean> {
+    return new Promise((res, rej) => {
+      this.receiverLink.once(ReceiverEvents.message, (context: EventContext) => {
+        if (!context.message) {
+          return rej(new Error("Receiver has not received any message"))
+        }
+
+        const response = new DeleteBindingResponseDecoder().decodeFrom(context.message, String(message.message_id))
+        if (response.status === "error") {
+          return rej(response.error)
+        }
+
+        return res(true)
+      })
+
+      const message = new MessageBuilder()
+        .sendTo(
+          `/${AmqpEndpoints.Bindings}/${buildUnbindEndpointFrom({ source: options.source, destination: options.destination, key })}`
+        )
+        .setReplyTo(ME)
+        .setAmqpMethod(AmqpMethods.DELETE)
+        .build()
+      this.senderLink.send(message)
+    })
+  }
 }
 
 function buildArgumentsFrom(queueType?: QueueType, queueOptions?: Record<string, string>) {
   return { ...(queueOptions ?? {}), ...(queueType ? { "x-queue-type": queueType } : {}) }
+}
+
+function buildUnbindEndpointFrom({
+  source,
+  destination,
+  key,
+}: {
+  source: Exchange
+  destination: Exchange | Queue
+  key: string
+}): string {
+  if (destination instanceof AmqpExchange) {
+    return `src=${encodeURIComponent(source.getInfo.name)};dste=${encodeURIComponent(destination.getInfo.name)};key=${encodeURIComponent(key)};args=`
+  }
+
+  return `src=${encodeURIComponent(source.getInfo.name)};dstq=${encodeURIComponent(destination.getInfo.name)};key=${encodeURIComponent(key)};args=`
+}
+
+function buildBindingDestinationFrom(destination: Exchange | Queue) {
+  if (destination instanceof AmqpExchange) {
+    return { destination_exchange: destination.getInfo.name }
+  }
+
+  return { destination_queue: destination.getInfo.name }
 }

@@ -26,7 +26,7 @@ describe("Rhea queues", () => {
   test("create a queue", async () => {
     await sendCreationQueueMessage(connection, management.sender, management.receiver)
 
-    console.log("AAAAAAAAAAAAAAAAA All ok")
+    console.log("All ok")
   })
 })
 
@@ -46,27 +46,27 @@ async function sendCreationQueueMessage(connection: Connection, sender: Sender, 
       return res(true)
     })
     receiver.once("message", function (context) {
-      console.log("AAAAAAAAAAAAA", context)
+      console.log("inside receiver message", context.message)
       return res(true)
     })
     connection.once(SenderEvents.rejected, function (context) {
-      console.log("AAAAAAAAAAAAAAAA Rejected")
+      console.log("Rejected")
       return rej(context.sender.error)
     })
     connection.once(SenderEvents.released, function (context) {
-      console.log("AAAAAAAAAAAAAAAA released")
+      console.log("Released")
       return rej(context.sender.error)
     })
     connection.once(SenderEvents.modified, function (context) {
-      console.log("AAAAAAAAAAAAAAAA modified")
+      console.log("Modified")
       return rej(context.sender.error)
     })
     connection.once(SenderEvents.senderError, function (context) {
-      console.log("AAAAAAAAAAAAAAAA senderError")
+      console.log("SenderError")
       return rej(context.sender.error)
     })
     connection.once(SenderEvents.settled, function (context) {
-      console.log("AAAAAAAAAAAAAAAA settled")
+      console.log("Settled")
       return rej(context.sender.error)
     })
 
