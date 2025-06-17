@@ -14,6 +14,8 @@ This library is meant to be used with RabbitMQ 4.0.
 
 - [Resources](#resources)
 
+- [Roadmap](#roadmap)
+
 ## Installing via npm
 
 The client is distributed via **npm**:
@@ -87,7 +89,3 @@ The interface shall be uniformed to all other clients in order to have [unified 
 5. (OPTIONAL) Autoreconnect (possibly [already managed by RHEA](https://github.com/amqp/rhea/blob/main/examples/reconnect/client.js))
 
 6. (OPTIONAL) Metrics for **Prometheus**
-
-## TODO
-
-Investigate use of **WebSockets** VS **Sockets** for use on **browser** VS **NodeJS**.
