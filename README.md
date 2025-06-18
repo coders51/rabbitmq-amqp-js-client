@@ -1,10 +1,9 @@
-# [WIP] RabbitMQ AMQP 1.0 JavaScript Client
+# RabbitMQ AMQP 1.0 JavaScript Client
 
-# NOT READY FOR PRODUCTION - The client is HEAVILY work in progress.
+This library is meant to be used with RabbitMQ 4.0. </br>
+Suitable for testing in pre-production environments. The public API(s) could change. 
 
 [![Build Status](https://github.com/coders51/rabbitmq-amqp-js-client/actions/workflows/main.yml/badge.svg)](https://github.com/coders51/rabbitmq-amqp-js-client/actions)
-
-This library is meant to be used with RabbitMQ 4.0.
 
 # Table of Contents
 
@@ -26,7 +25,9 @@ The client is distributed via **npm**:
 
 ## Getting started
 
-**NOTE:** this is just a first example and will be replaced with the reference to the _examples folder_
+**NOTE:** This is just a first example and will be replaced with a reference to the _examples folder_
+
+The following example demonstrates how to create an environment, open a connection, and use the management to create and delete queues, exchanges, and bindings.
 
 ```typescript
 const environment = createEnvironment({
@@ -60,8 +61,6 @@ await connection.close()
 await environment.close()
 ```
 
-In this example we demonstrate how to create an environment, open a connection and use the management to create
-or delete queues, exchanges and bindings.
 
 ## Resources
 
