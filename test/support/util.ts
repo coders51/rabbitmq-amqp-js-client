@@ -235,6 +235,28 @@ function buildBindingEndpointFrom(params: {
   return `http://${host}:${managementPort}/api/bindings/${vhost}/e/${params.source}/${queueOrExchange}/${params.destination}`
 }
 
+export async function createBinding(
+  routingKey: string,
+  params: {
+    source: string
+    destination: string
+    type: "exchangeToQueue" | "exchangeToExchange"
+  }
+): Promise<Response<unknown>> {
+  const response = await got.post(buildBindingEndpointFrom(params), {
+    headers: {
+      Authorization: `Basic ${Buffer.from(`${username}:${password}`).toString("base64")}`,
+    },
+    body: JSON.stringify({
+      routing_key: routingKey,
+    }),
+    responseType: "json",
+    throwHttpErrors: false,
+  })
+
+  return response
+}
+
 export async function deleteBinding(params: {
   source: string
   destination: string
@@ -276,9 +298,9 @@ export async function deleteAllBindings(): Promise<void> {
 }
 
 export async function cleanRabbit({ match }: { match: RegExp } = { match: /.*/ }): Promise<void> {
+  await deleteAllBindings()
   await deleteAllQueues({ match })
   await deleteAllExchanges({ match })
-  await deleteAllBindings()
 }
 
 export async function wait(ms: number) {

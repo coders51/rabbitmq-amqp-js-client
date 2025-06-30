@@ -10,7 +10,7 @@ import {
   SenderEvents,
   SenderOptions,
 } from "rhea"
-import { AmqpEndpoints, AmqpMethods, MessageBuilder, ME } from "./message_builder.js"
+import { AmqpEndpoints, AmqpMethods, LinkMessageBuilder, ME } from "./link_message_builder.js"
 import {
   CreateBindingResponseDecoder,
   CreateExchangeResponseDecoder,
@@ -21,12 +21,7 @@ import {
 } from "./response_decoder.js"
 import { AmqpBinding, Binding, BindingInfo, BindingOptions } from "./binding.js"
 import { randomUUID } from "crypto"
-
-type LinkOpenEvents = SenderEvents.senderOpen | ReceiverEvents.receiverOpen
-type LinkErrorEvents = SenderEvents.senderError | ReceiverEvents.receiverError
-type OpenLinkMethods =
-  | ((options?: SenderOptions | string) => Sender)
-  | ((options?: ReceiverOptions | string) => Receiver)
+import { openLink } from "./utils.js"
 
 const MANAGEMENT_NODE_CONFIGURATION: SenderOptions | ReceiverOptions = {
   snd_settle_mode: 1,
@@ -61,7 +56,7 @@ export class AmqpManagement implements Management {
   ) {}
 
   private static async openReceiver(connection: RheaConnection): Promise<Receiver> {
-    return AmqpManagement.openLink<Receiver>(
+    return openLink<Receiver>(
       connection,
       ReceiverEvents.receiverOpen,
       ReceiverEvents.receiverError,
@@ -71,31 +66,13 @@ export class AmqpManagement implements Management {
   }
 
   private static async openSender(connection: RheaConnection): Promise<Sender> {
-    return AmqpManagement.openLink<Sender>(
+    return openLink<Sender>(
       connection,
       SenderEvents.senderOpen,
       SenderEvents.senderError,
       connection.open_sender.bind(connection),
       MANAGEMENT_NODE_CONFIGURATION
     )
-  }
-
-  private static async openLink<T extends Sender | Receiver>(
-    connection: RheaConnection,
-    successEvent: LinkOpenEvents,
-    errorEvent: LinkErrorEvents,
-    openMethod: OpenLinkMethods,
-    config?: SenderOptions | ReceiverOptions | string
-  ): Promise<T> {
-    return new Promise((res, rej) => {
-      connection.once(successEvent, (context) => {
-        return res(context.receiver || context.sender)
-      })
-      connection.once(errorEvent, (context) => {
-        return rej(context.connection.error)
-      })
-      openMethod(config)
-    })
   }
 
   close(): void {
@@ -128,7 +105,7 @@ export class AmqpManagement implements Management {
         return res(new AmqpQueue(response.body))
       })
 
-      const message = new MessageBuilder()
+      const message = new LinkMessageBuilder()
         .sendTo(`/${AmqpEndpoints.Queues}/${encodeURIComponent(queueName)}`)
         .setReplyTo(ME)
         .setAmqpMethod(AmqpMethods.PUT)
@@ -158,7 +135,7 @@ export class AmqpManagement implements Management {
         return res(true)
       })
 
-      const message = new MessageBuilder()
+      const message = new LinkMessageBuilder()
         .sendTo(`/${AmqpEndpoints.Queues}/${encodeURIComponent(queueName)}`)
         .setReplyTo(ME)
         .setAmqpMethod(AmqpMethods.DELETE)
@@ -189,7 +166,7 @@ export class AmqpManagement implements Management {
         return res(new AmqpExchange(exchangeInfo))
       })
 
-      const message = new MessageBuilder()
+      const message = new LinkMessageBuilder()
         .sendTo(`/${AmqpEndpoints.Exchanges}/${encodeURIComponent(exchangeName)}`)
         .setReplyTo(ME)
         .setAmqpMethod(AmqpMethods.PUT)
@@ -219,7 +196,7 @@ export class AmqpManagement implements Management {
         return res(true)
       })
 
-      const message = new MessageBuilder()
+      const message = new LinkMessageBuilder()
         .sendTo(`/${AmqpEndpoints.Exchanges}/${encodeURIComponent(exchangeName)}`)
         .setReplyTo(ME)
         .setAmqpMethod(AmqpMethods.DELETE)
@@ -249,7 +226,7 @@ export class AmqpManagement implements Management {
         return res(new AmqpBinding(bindingInfo))
       })
 
-      const message = new MessageBuilder()
+      const message = new LinkMessageBuilder()
         .sendTo(`/${AmqpEndpoints.Bindings}`)
         .setReplyTo(ME)
         .setAmqpMethod(AmqpMethods.POST)
@@ -279,7 +256,7 @@ export class AmqpManagement implements Management {
         return res(true)
       })
 
-      const message = new MessageBuilder()
+      const message = new LinkMessageBuilder()
         .sendTo(
           `/${AmqpEndpoints.Bindings}/${buildUnbindEndpointFrom({ source: options.source, destination: options.destination, key })}`
         )

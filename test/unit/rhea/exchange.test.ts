@@ -6,10 +6,10 @@ import {
   openConnection,
   openManagement,
   RheaManagement,
-  sendCreationQueueMessage,
+  sendCreationExchangeMessage,
 } from "../../support/rhea_utils.js"
 
-describe("Rhea queues", () => {
+describe("Rhea exchanges", () => {
   let container: Container
   let connection: Connection
   let management: RheaManagement
@@ -29,8 +29,8 @@ describe("Rhea queues", () => {
     await closeConnection(connection)
   })
 
-  test("create a queue", async () => {
-    await sendCreationQueueMessage(connection, management.sender, management.receiver)
+  test("create an exchange", async () => {
+    await sendCreationExchangeMessage(connection, management.sender, management.receiver)
 
     console.log("All ok")
   })
