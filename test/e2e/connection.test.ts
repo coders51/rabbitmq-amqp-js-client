@@ -106,4 +106,39 @@ describe("Connection", () => {
 
     expect(newConnection.publishers.size).eql(0)
   })
+
+  test("create a consumer linked to a queue", async () => {
+    await connection.createConsumer(queueName, {
+      messageHandler: async (msg) => {
+        console.log(msg)
+      },
+    })
+
+    expect(connection.consumers.size).eql(1)
+  })
+
+  test("close a consumer", async () => {
+    const consumer = await connection.createConsumer(queueName, {
+      messageHandler: async (msg) => {
+        console.log(msg)
+      },
+    })
+
+    consumer.close()
+
+    expect(connection.consumers.size).eql(0)
+  })
+
+  test("closing the connection also closes the consumer", async () => {
+    const newConnection = await environment.createConnection()
+    await newConnection.createConsumer(queueName, {
+      messageHandler: async (msg) => {
+        console.log(msg)
+      },
+    })
+
+    await newConnection.close()
+
+    expect(newConnection.consumers.size).eql(0)
+  })
 })

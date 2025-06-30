@@ -3,6 +3,7 @@ import { AmqpManagement, Management } from "./management.js"
 import { EnvironmentParams } from "./environment.js"
 import { AmqpPublisher, Publisher } from "./publisher.js"
 import { DestinationOptions } from "./message.js"
+import { AmqpConsumer, Consumer, CreateConsumerParams } from "./consumer.js"
 
 export interface Connection {
   close(): Promise<boolean>
@@ -10,10 +11,13 @@ export interface Connection {
   management(): Management
   createPublisher(options?: DestinationOptions): Promise<Publisher>
   get publishers(): Map<string, Publisher>
+  get consumers(): Map<string, Consumer>
+  createConsumer(queueName: string, params: CreateConsumerParams): Promise<Consumer>
 }
 
 export class AmqpConnection implements Connection {
   private _publishers: Map<string, Publisher> = new Map<string, Publisher>()
+  private _consumers: Map<string, Consumer> = new Map<string, Consumer>()
 
   static async create(params: EnvironmentParams) {
     const connection = await AmqpConnection.open(params)
@@ -50,8 +54,15 @@ export class AmqpConnection implements Connection {
       })
 
       this._publishers.forEach((p) => p.close())
+      this._consumers.forEach((p) => p.close())
       this.connection.close()
     })
+  }
+
+  async createConsumer(queueName: string, params: CreateConsumerParams): Promise<Consumer> {
+    const consumer = await AmqpConsumer.createFrom(this.connection, this._consumers, queueName, params)
+    this._consumers.set(consumer.id, consumer)
+    return consumer
   }
 
   management(): Management {
@@ -66,6 +77,10 @@ export class AmqpConnection implements Connection {
 
   public get publishers(): Map<string, Publisher> {
     return this._publishers
+  }
+
+  public get consumers(): Map<string, Consumer> {
+    return this._consumers
   }
 
   public isOpen(): boolean {
