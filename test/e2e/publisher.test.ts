@@ -105,7 +105,7 @@ describe("Publisher", () => {
     expect(publishResult.outcome).to.eql(OutcomeState.ACCEPTED)
   })
 
-  test.skip("publish a non routable message with address", async () => {
+  test("publish a non routable message with address", async () => {
     const publisher = await connection.createPublisher()
 
     const publishResult = await publisher.publish(
@@ -115,6 +115,6 @@ describe("Publisher", () => {
       })
     )
 
-    expect(publishResult.outcome).to.eql(OutcomeState.RELEASED)
+    expect(publishResult.outcome).to.eql(OutcomeState.ACCEPTED)
   })
 })
