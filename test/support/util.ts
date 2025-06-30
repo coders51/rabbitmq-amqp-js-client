@@ -235,6 +235,28 @@ function buildBindingEndpointFrom(params: {
   return `http://${host}:${managementPort}/api/bindings/${vhost}/e/${params.source}/${queueOrExchange}/${params.destination}`
 }
 
+export async function createBinding(
+  routingKey: string,
+  params: {
+    source: string
+    destination: string
+    type: "exchangeToQueue" | "exchangeToExchange"
+  }
+): Promise<Response<unknown>> {
+  const response = await got.post(buildBindingEndpointFrom(params), {
+    headers: {
+      Authorization: `Basic ${Buffer.from(`${username}:${password}`).toString("base64")}`,
+    },
+    body: JSON.stringify({
+      routing_key: routingKey,
+    }),
+    responseType: "json",
+    throwHttpErrors: false,
+  })
+
+  return response
+}
+
 export async function deleteBinding(params: {
   source: string
   destination: string
@@ -276,9 +298,9 @@ export async function deleteAllBindings(): Promise<void> {
 }
 
 export async function cleanRabbit({ match }: { match: RegExp } = { match: /.*/ }): Promise<void> {
+  await deleteAllBindings()
   await deleteAllQueues({ match })
   await deleteAllExchanges({ match })
-  await deleteAllBindings()
 }
 
 export async function wait(ms: number) {
@@ -305,5 +327,26 @@ export async function eventually(fn: Function, timeout = 5000) {
       }
       await wait(5)
     }
+  }
+}
+
+export async function expectToThrowAsync(
+  method: () => Promise<unknown>,
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-function-type
+  expectedError: Function | Error,
+  errorMessage: string | RegExp | null = null
+): Promise<void> {
+  let error = null
+  try {
+    await method()
+  } catch (err) {
+    error = err
+  }
+  expect(error).instanceOf(expectedError)
+  if (errorMessage instanceof RegExp) {
+    expect((error as { message: string }).message).match(errorMessage)
+  }
+  if (typeof errorMessage === "string") {
+    expect((error as { message: string }).message).eql(errorMessage)
   }
 }

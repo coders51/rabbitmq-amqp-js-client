@@ -15,7 +15,7 @@ export enum AmqpEndpoints {
 
 export const ME = "$me"
 
-export class MessageBuilder {
+export class LinkMessageBuilder {
   private messageId: string = generate_uuid()
   private to: string = ""
   private replyTo: string = ME

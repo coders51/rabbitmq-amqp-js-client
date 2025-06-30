@@ -1,4 +1,13 @@
-import { Message } from "rhea"
+import {
+  Connection,
+  Message,
+  Receiver,
+  ReceiverEvents,
+  ReceiverOptions,
+  Sender,
+  SenderEvents,
+  SenderOptions,
+} from "rhea"
 import { QueueType } from "./queue.js"
 
 export enum AmqpResponseCodes {
@@ -8,6 +17,12 @@ export enum AmqpResponseCodes {
   BAD_REQUEST = "400",
   NOT_FOUND = "404",
   CONFLICT = "409",
+}
+
+export enum OutcomeState {
+  ACCEPTED = "ACCEPTED",
+  REJECTED = "REJECTED",
+  RELEASED = "RELEASED",
 }
 
 export const DURABLE = 1
@@ -45,4 +60,28 @@ export function queueTypeFromString(queueType: string): QueueType {
     default:
       throw new Error(`Unsupported queue type: ${queueType}`)
   }
+}
+
+type LinkOpenEvents = SenderEvents.senderOpen | ReceiverEvents.receiverOpen
+type LinkErrorEvents = SenderEvents.senderError | ReceiverEvents.receiverError
+type OpenLinkMethods =
+  | ((options?: SenderOptions | string) => Sender)
+  | ((options?: ReceiverOptions | string) => Receiver)
+
+export async function openLink<T extends Sender | Receiver>(
+  connection: Connection,
+  successEvent: LinkOpenEvents,
+  errorEvent: LinkErrorEvents,
+  openMethod: OpenLinkMethods,
+  config?: SenderOptions | ReceiverOptions | string
+): Promise<T> {
+  return new Promise((res, rej) => {
+    connection.once(successEvent, (context) => {
+      return res(context.receiver || context.sender)
+    })
+    connection.once(errorEvent, (context) => {
+      return rej(context.connection.error)
+    })
+    openMethod(config)
+  })
 }

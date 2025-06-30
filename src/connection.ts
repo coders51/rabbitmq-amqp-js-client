@@ -1,14 +1,20 @@
 import { ConnectionEvents, create_container, Connection as RheaConnection } from "rhea"
 import { AmqpManagement, Management } from "./management.js"
 import { EnvironmentParams } from "./environment.js"
+import { AmqpPublisher, Publisher } from "./publisher.js"
+import { DestinationOptions } from "./message.js"
 
 export interface Connection {
   close(): Promise<boolean>
   isOpen(): boolean
   management(): Management
+  createPublisher(options?: DestinationOptions): Promise<Publisher>
+  get publishers(): Map<string, Publisher>
 }
 
 export class AmqpConnection implements Connection {
+  private _publishers: Map<string, Publisher> = new Map<string, Publisher>()
+
   static async create(params: EnvironmentParams) {
     const connection = await AmqpConnection.open(params)
     const topologyManagement = await AmqpManagement.create(connection)
@@ -43,12 +49,23 @@ export class AmqpConnection implements Connection {
         return rej(new Error("Connection error: " + context.connection.error))
       })
 
+      this._publishers.forEach((p) => p.close())
       this.connection.close()
     })
   }
 
   management(): Management {
     return this.topologyManagement
+  }
+
+  async createPublisher(options?: DestinationOptions): Promise<Publisher> {
+    const publisher = await AmqpPublisher.createFrom(this.connection, this._publishers, options)
+    this._publishers.set(publisher.id, publisher)
+    return publisher
+  }
+
+  public get publishers(): Map<string, Publisher> {
+    return this._publishers
   }
 
   public isOpen(): boolean {
