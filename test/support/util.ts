@@ -329,24 +329,3 @@ export async function eventually(fn: Function, timeout = 5000) {
     }
   }
 }
-
-export async function expectToThrowAsync(
-  method: () => Promise<unknown>,
-  // eslint-disable-next-line @typescript-eslint/no-unsafe-function-type
-  expectedError: Function | Error,
-  errorMessage: string | RegExp | null = null
-): Promise<void> {
-  let error = null
-  try {
-    await method()
-  } catch (err) {
-    error = err
-  }
-  expect(error).instanceOf(expectedError)
-  if (errorMessage instanceof RegExp) {
-    expect((error as { message: string }).message).match(errorMessage)
-  }
-  if (typeof errorMessage === "string") {
-    expect((error as { message: string }).message).eql(errorMessage)
-  }
-}

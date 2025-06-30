@@ -83,7 +83,6 @@ export class AmqpPublisher implements Publisher {
             return promise.resolve({ delivery: context.delivery, outcome: getOutcomeStateFrom(senderEvent) })
           }
         }
-        return Promise.reject("Message cannot be handled successfully")
       }
     }
     this.errorMessageHandler = (context: EventContext, errorEvent: RejectableSenderEvents, deliveryId: number) => {
@@ -93,7 +92,6 @@ export class AmqpPublisher implements Publisher {
         const error = new Error(`SenderLink error ${errorEvent}: ${inspect(context.error)}`)
         return promise.reject(error)
       }
-      return Promise.reject("Unhandled error")
     }
 
     this.registerEventListeners()

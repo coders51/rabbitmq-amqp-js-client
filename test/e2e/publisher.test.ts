@@ -10,8 +10,6 @@ import {
   createBinding,
   cleanRabbit,
   deleteExchange,
-  expectToThrowAsync,
-  deleteQueue,
 } from "../support/util.js"
 import { Connection } from "../../src/connection.js"
 import { OutcomeState } from "../../src/utils.js"
@@ -74,20 +72,11 @@ describe("Publisher", () => {
     expect(publishResult.outcome).to.eql(OutcomeState.RELEASED)
   })
 
-  test.skip("publish should throw if exchange is deleted", async () => {
+  test("publish should throw if exchange is deleted", async () => {
     const publisher = await connection.createPublisher({ exchange: { name: exchangeName, routingKey: bindingKey } })
     await deleteExchange(exchangeName)
 
-    await expectToThrowAsync(() => publisher.publish(createAmqpMessage({ body: "Hello World!" })), Error)
-    // await expect(publisher.publish(createAmqpMessage({ body: "Hello World!" }))).rejects.toThrowError()
-  })
-
-  test.skip("publish should throw if queue is deleted", async () => {
-    const publisher = await connection.createPublisher({ queue: { name: queueName } })
-    await deleteQueue(queueName)
-
-    await expectToThrowAsync(() => publisher.publish(createAmqpMessage({ body: "Hello World!" })), Error)
-    // await expect(publisher.publish(createAmqpMessage({ body: "Hello World!" }))).rejects.toThrowError()
+    await expect(publisher.publish(createAmqpMessage({ body: "Hello World!" }))).rejects.toThrowError(Error)
   })
 
   test("publish a message with address to an exchange", async () => {
