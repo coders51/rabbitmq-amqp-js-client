@@ -20,14 +20,19 @@ type MessageOptions = {
 
 export function createAmqpMessage(options: MessageOptions): RheaMessage {
   if (options.destination) {
-    return { message_id: generate_uuid(), body: options.body, to: createAddressFrom(options.destination) }
+    return {
+      message_id: generate_uuid(),
+      body: options.body,
+      to: createAddressFrom(options.destination),
+      durable: true,
+    }
   }
 
-  return { message_id: generate_uuid(), body: options.body }
+  return { message_id: generate_uuid(), body: options.body, durable: true }
 }
 
-export function createAddressFrom(options?: DestinationOptions): string {
-  if (!options) return ""
+export function createAddressFrom(options?: DestinationOptions): string | undefined {
+  if (!options) return undefined
   if ("queue" in options) return `/${AmqpEndpoints.Queues}/${options.queue.name}`
   if ("exchange" in options) {
     return options.exchange.routingKey

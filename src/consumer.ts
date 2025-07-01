@@ -49,6 +49,8 @@ export class AmqpConsumer implements Consumer {
   ) {
     const id = generate_uuid()
     const address = createAddressFrom({ queue: { name: queueName } })
+    if (!address) throw new Error("Consumer must have an address")
+
     const receiverLink = await AmqpConsumer.openReceiver(connection, address, id)
     return new AmqpConsumer(id, connection, consumersList, receiverLink, params)
   }

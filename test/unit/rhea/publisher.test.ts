@@ -123,4 +123,47 @@ describe("Creating a publisher through rhea", () => {
       })
     })
   })
+
+  describe("anonymous", () => {
+    test("create a publisher", async () => {
+      const publisher = await openPublisherSender(connection)
+
+      expect(publisher).to.not.eql(null)
+    })
+
+    test("send a message through a publisher", async () => {
+      const publisher = await openPublisherSender(connection)
+      let test = false
+      publisher.on(SenderEvents.accepted, () => {
+        console.log("accepted")
+        test = true
+      })
+      publisher.on(SenderEvents.sendable, () => {
+        console.log("sendable")
+        test = true
+      })
+      publisher.on(SenderEvents.modified, () => {
+        console.log("modified")
+        test = true
+      })
+      publisher.on(SenderEvents.rejected, () => {
+        console.log("rejected")
+        test = true
+      })
+      publisher.on(SenderEvents.released, () => {
+        console.log("released")
+        test = true
+      })
+      publisher.on(SenderEvents.settled, () => {
+        console.log("settled")
+        test = true
+      })
+
+      publisher.send({ message_id: randomUUID(), body: "Hello world!", to: `/queues/${testQueueName}` })
+
+      await eventually(async () => {
+        expect(test).eql(true)
+      })
+    })
+  })
 })

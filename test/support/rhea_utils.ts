@@ -47,13 +47,13 @@ const MANAGEMENT_NODE_CONFIGURATION: SenderOptions | ReceiverOptions = {
   properties: { paired: true },
 }
 
-const getPublisherNodeConfigurationFrom = (address: string): SenderOptions => ({
+const getPublisherNodeConfigurationFrom = (address?: string): SenderOptions => ({
   snd_settle_mode: 0,
   rcv_settle_mode: 0,
   name: "publisher-sender-link",
   target: { address, expiry_policy: "SESSION_END", durable: 0, dynamic: false },
   source: {
-    address,
+    address: address ?? "",
     expiry_policy: "LINK_DETACH",
     timeout: 0,
     dynamic: false,
@@ -116,7 +116,7 @@ async function openLink<T extends Sender | Receiver>(
   })
 }
 
-export async function openPublisherSender(connection: Connection, address: string) {
+export async function openPublisherSender(connection: Connection, address?: string) {
   return openLink<Sender>(
     connection,
     SenderEvents.senderOpen,

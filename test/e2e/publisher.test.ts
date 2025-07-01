@@ -115,6 +115,6 @@ describe("Publisher", () => {
       })
     )
 
-    expect(publishResult.outcome).to.eql(OutcomeState.ACCEPTED)
+    expect(publishResult.outcome).to.eql(OutcomeState.RELEASED)
   })
 })
