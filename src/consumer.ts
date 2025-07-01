@@ -36,7 +36,6 @@ const getConsumerReceiverLinkConfigurationFrom = (
 
 export interface Consumer {
   start(): void
-  stop(): Promise<void>
   close(): void
   get id(): string
 }
@@ -80,15 +79,23 @@ export class AmqpConsumer implements Consumer {
 
   start() {
     this.receiverLink.on(ReceiverEvents.message, (context: EventContext) => {
-      if (context.message) {
-        this.params.messageHandler(context.message)
+      console.log("message received", context.message?.body)
+      if (context.message && context.delivery) {
+        console.log("message accepted")
+        try {
+          this.params.messageHandler(context.message)
+          context.delivery.accept()
+          console.log("message consumed")
+        } catch (e) {
+          context.delivery.reject({ condition: "Message Handler error", info: e })
+          console.log("message rejected")
+        }
       }
     })
   }
 
-  stop(): Promise<void> {}
-
   close() {
+    this.receiverLink.removeAllListeners()
     if (this.receiverLink.is_open()) this.receiverLink.close()
     if (this.consumersList.has(this._id)) this.consumersList.delete(this._id)
   }

@@ -1,25 +1,11 @@
 import { Management } from "../../src/index.js"
 import { afterEach, beforeEach, describe, expect, test } from "vitest"
-import {
-  createQueue,
-  existsQueue,
-  eventually,
-  createExchange,
-  existsExchange,
-  getQueueInfo,
-  host,
-  password,
-  port,
-  username,
-  getExchangeInfo,
-  existsBinding,
-  cleanRabbit,
-} from "../support/util.js"
+import { eventually, host, password, port, username, cleanRabbit } from "../support/util.js"
 import { createEnvironment, Environment } from "../../src/environment.js"
 import { Connection } from "../../src/connection.js"
 import { Queue } from "../../src/queue.js"
 import { Exchange } from "../../src/exchange.js"
-import { Binding } from "../../src/binding.js"
+import { createAmqpMessage } from "../../src/message.js"
 
 describe("Consumer", () => {
   let environment: Environment
@@ -27,7 +13,6 @@ describe("Consumer", () => {
   let management: Management
   let queue: Queue
   let exchange: Exchange
-  let binding: Binding
 
   const exchangeName = "test-exchange"
   const queueName = "test-queue"
@@ -44,8 +29,7 @@ describe("Consumer", () => {
     management = connection.management()
     queue = await management.declareQueue(queueName)
     exchange = await management.declareExchange(exchangeName)
-    binding = await management.bind(bindingKey, { source: exchange, destination: queue })
-    await cleanRabbit({ match: /test-/ })
+    await management.bind(bindingKey, { source: exchange, destination: queue })
   })
 
   afterEach(async () => {
@@ -58,12 +42,66 @@ describe("Consumer", () => {
     }
   })
 
-  test("create consumer", async () => {
+  test("consumer can handle message on exchange", async () => {
+    const publisher = await connection.createPublisher({ exchange: { name: exchangeName, routingKey: bindingKey } })
+    const expectedBody = "ciao"
+    await publisher.publish(createAmqpMessage({ body: expectedBody }))
+    let received: string = ""
+
     const consumer = await connection.createConsumer(queueName, {
-      messageHandler: async (message) => {
-        console.log(message)
+      messageHandler: (message) => {
+        received = message.body
       },
     })
-    await consumer.start()
+    consumer.start()
+
+    await eventually(() => {
+      expect(received).to.be.eql(expectedBody)
+    })
+  })
+
+  test.skip("consumer can handle message on exchange, destination on message", async () => {
+    const publisher = await connection.createPublisher()
+    const expectedBody = "ciao"
+    await publisher.publish(
+      createAmqpMessage({
+        body: expectedBody,
+        destination: { exchange: { name: exchangeName, routingKey: bindingKey } },
+      })
+    )
+    let received: string = ""
+
+    const consumer = await connection.createConsumer(queueName, {
+      messageHandler: (message) => {
+        received = message.body
+      },
+    })
+    consumer.start()
+
+    await eventually(() => {
+      expect(received).to.be.eql(expectedBody)
+    })
+  })
+
+  test("consumer can handle message on queue", async () => {
+    const publisher = await connection.createPublisher({ queue: { name: queueName } })
+    const expectedBody = "ciao"
+    await publisher.publish(
+      createAmqpMessage({
+        body: expectedBody,
+      })
+    )
+    let received: string = ""
+
+    const consumer = await connection.createConsumer(queueName, {
+      messageHandler: (message) => {
+        received = message.body
+      },
+    })
+    consumer.start()
+
+    await eventually(() => {
+      expect(received).to.be.eql(expectedBody)
+    })
   })
 })
