@@ -5,15 +5,15 @@ import { inspect } from "util"
 import { createAddressFrom, DestinationOptions } from "./message.js"
 
 const getPublisherSenderLinkConfigurationFrom = (
-  address: string,
-  publisherId: string
+  publisherId: string,
+  address?: string
 ): SenderOptions | ReceiverOptions => ({
   snd_settle_mode: 0,
   rcv_settle_mode: 0,
   name: publisherId,
   target: { address, expiry_policy: "SESSION_END", durable: 0, dynamic: false },
   source: {
-    address,
+    address: address ?? "",
     expiry_policy: "LINK_DETACH",
     timeout: 0,
     dynamic: false,
@@ -49,17 +49,17 @@ export class AmqpPublisher implements Publisher {
   ): Promise<Publisher> {
     const address = createAddressFrom(options)
     const id = randomUUID()
-    const senderLink = await AmqpPublisher.openSender(connection, address, id)
+    const senderLink = await AmqpPublisher.openSender(connection, id, address)
     return new AmqpPublisher(connection, senderLink, id, publishersList)
   }
 
-  private static async openSender(connection: Connection, address: string, publisherId: string): Promise<Sender> {
+  private static async openSender(connection: Connection, publisherId: string, address?: string): Promise<Sender> {
     return openLink<Sender>(
       connection,
       SenderEvents.senderOpen,
       SenderEvents.senderError,
       connection.open_sender.bind(connection),
-      getPublisherSenderLinkConfigurationFrom(address, publisherId)
+      getPublisherSenderLinkConfigurationFrom(publisherId, address)
     )
   }
 

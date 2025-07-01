@@ -60,7 +60,7 @@ describe("Consumer", () => {
     })
   })
 
-  test.skip("consumer can handle message on exchange, destination on message", async () => {
+  test("consumer can handle message on exchange, destination on message", async () => {
     const publisher = await connection.createPublisher()
     const expectedBody = "ciao"
     await publisher.publish(
