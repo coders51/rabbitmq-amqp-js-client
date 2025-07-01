@@ -1,1 +1,5 @@
 export { Management, AmqpManagement } from "./management.js"
+export { Environment, AmqpEnvironment } from "./environment.js"
+export { Connection, AmqpConnection } from "./connection.js"
+export { Publisher, AmqpPublisher } from "./publisher.js"
+export { createAmqpMessage } from "./message.js"
