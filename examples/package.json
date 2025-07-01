@@ -1,0 +1,23 @@
+{
+  "name": "example",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node index.js",
+    "rebuild-source": "cd .. && npm run build && cd - && npm install --force"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "rhea": "^3.0.4",
+    "rabbitmq-amqp-js-client": "file:../."
+  },
+  "engines": {
+    "node": "22.x.x"
+  },
+  "devDependencies": {
+    "typescript": "^5.8.3"
+  }
+}

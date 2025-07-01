@@ -1,0 +1,1 @@
+const rabbit = require("rabbitmq-amqp-js-client")
