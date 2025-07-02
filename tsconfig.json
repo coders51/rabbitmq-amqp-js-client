@@ -12,5 +12,5 @@
     "outDir": "dist"
   },
   "include": ["src/**/*", "test/**/*", "vitest.config.mts"],
-  "exclude": ["node_modules"]
+  "exclude": ["node_modules", "examples"]
 }

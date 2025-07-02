@@ -1,7 +1,7 @@
 # RabbitMQ AMQP 1.0 JavaScript Client
 
 This library is meant to be used with RabbitMQ 4.0. </br>
-Suitable for testing in pre-production environments. The public API(s) could change. 
+Suitable for testing in pre-production environments. The public API(s) could change.
 
 [![Build Status](https://github.com/coders51/rabbitmq-amqp-js-client/actions/workflows/main.yml/badge.svg)](https://github.com/coders51/rabbitmq-amqp-js-client/actions)
 
@@ -25,42 +25,7 @@ The client is distributed via **npm**:
 
 ## Getting started
 
-**NOTE:** This is just a first example and will be replaced with a reference to the _examples folder_
-
-The following example demonstrates how to create an environment, open a connection, and use the management to create and delete queues, exchanges, and bindings.
-
-```typescript
-const environment = createEnvironment({
-  host: "localhost",
-  port: 5672,
-  username: "rabbit",
-  password: "rabbit",
-})
-
-const connection = await environment.createConnection()
-
-const management = connection.management()
-
-const queue = await management.declareQueue("test")
-
-const exchange = await management.declareExchange("exchange", { type: "topic" })
-const secondExchange = await management.declareExchange("exchange-dest", { type: "topic" })
-
-const bindingToQueue = await management.bind("foo", { source: exchange, destination: queue })
-const bindingToExchange = await management.bind("foo", { source: exchange, destination: secondExchange })
-
-await management.unbind("foo", { source: exchange, destination: queue })
-await management.unbind("foo", { source: exchange, destination: secondExchange })
-
-await management.deleteExchange("exchange")
-await management.deleteExchange("exchange-dest")
-await management.deleteQueue("test")
-
-management.close()
-await connection.close()
-await environment.close()
-```
-
+Inside the [_examples_](./examples/) folder you can find a node project that shows how to use the library.
 
 ## Resources
 
