@@ -78,6 +78,24 @@ describe("Management", () => {
     })
   })
 
+  test("get info of a queue through the management", async () => {
+    await createQueue(queueName)
+
+    const result = await management.getQueueInfo(queueName)
+
+    await eventually(async () => {
+      const queueInfo = await getQueueInfo(queueName)
+      expect(result.getInfo.arguments).to.eql(queueInfo.body.arguments)
+      expect(result.getInfo.autoDelete).to.eql(queueInfo.body.auto_delete)
+      expect(result.getInfo.durable).to.eql(queueInfo.body.durable)
+      expect(result.getInfo.exclusive).to.eql(queueInfo.body.exclusive)
+      expect(result.getInfo.consumerCount).to.eql(queueInfo.body.consumers)
+      expect(result.getInfo.messageCount).to.eql(queueInfo.body.messages)
+      expect(result.getInfo.type).to.eql(queueInfo.body.type)
+      expect(result.getInfo.leader).to.eql(queueInfo.body.node)
+    })
+  })
+
   test("create an exchange through the management", async () => {
     const exchange = await management.declareExchange(exchangeName, {
       type: "headers",

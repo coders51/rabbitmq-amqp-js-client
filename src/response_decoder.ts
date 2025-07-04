@@ -30,6 +30,8 @@ export class CreateQueueResponseDecoder implements ResponseDecoder {
   }
 }
 
+export class GetQueueInfoResponseDecoder extends CreateQueueResponseDecoder {}
+
 export class DeleteQueueResponseDecoder implements ResponseDecoder {
   decodeFrom(receivedMessage: Message, sentMessageId: string): Result<DeletedQueueInfo, Error> {
     if (isError(receivedMessage) || sentMessageId !== receivedMessage.correlation_id) {

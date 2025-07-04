@@ -18,6 +18,7 @@ import {
   DeleteBindingResponseDecoder,
   DeleteExchangeResponseDecoder,
   DeleteQueueResponseDecoder,
+  GetQueueInfoResponseDecoder,
 } from "./response_decoder.js"
 import { AmqpBinding, Binding, BindingInfo, BindingOptions } from "./binding.js"
 import { randomUUID } from "crypto"
@@ -35,6 +36,7 @@ const MANAGEMENT_NODE_CONFIGURATION: SenderOptions | ReceiverOptions = {
 export interface Management {
   declareQueue: (queueName: string, options?: Partial<QueueOptions>) => Promise<Queue>
   deleteQueue: (queueName: string) => Promise<boolean>
+  getQueueInfo: (queueName: string) => Promise<Queue>
   declareExchange: (exchangeName: string, options?: Partial<ExchangeOptions>) => Promise<Exchange>
   deleteExchange: (exchangeName: string) => Promise<boolean>
   bind: (key: string, options: BindingOptions) => Promise<Binding>
@@ -139,6 +141,30 @@ export class AmqpManagement implements Management {
         .sendTo(`/${AmqpEndpoints.Queues}/${encodeURIComponent(queueName)}`)
         .setReplyTo(ME)
         .setAmqpMethod(AmqpMethods.DELETE)
+        .build()
+      this.senderLink.send(message)
+    })
+  }
+
+  async getQueueInfo(queueName: string): Promise<Queue> {
+    return new Promise((res, rej) => {
+      this.receiverLink.once(ReceiverEvents.message, (context: EventContext) => {
+        if (!context.message) {
+          return rej(new Error("Receiver has not received any message"))
+        }
+
+        const response = new GetQueueInfoResponseDecoder().decodeFrom(context.message, String(message.message_id))
+        if (response.status === "error") {
+          return rej(response.error)
+        }
+
+        return res(new AmqpQueue(response.body))
+      })
+
+      const message = new LinkMessageBuilder()
+        .sendTo(`/${AmqpEndpoints.Queues}/${encodeURIComponent(queueName)}`)
+        .setReplyTo(ME)
+        .setAmqpMethod(AmqpMethods.GET)
         .build()
       this.senderLink.send(message)
     })
