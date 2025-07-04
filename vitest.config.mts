@@ -18,7 +18,7 @@ export default defineConfig({
       enabled: false,
       provider: "istanbul",
       include: ["src/**/*.ts"],
-      exclude: ["node_modules/**", "dist/**", "test/**"],
+      exclude: ["node_modules/**", "dist/**", "examples/**", "test/**"],
     },
   },
 })
