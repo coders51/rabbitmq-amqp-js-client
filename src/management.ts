@@ -200,6 +200,7 @@ export class AmqpManagement implements Management {
           type: options.type ?? "direct",
           durable: options.durable ?? true,
           auto_delete: options.auto_delete ?? false,
+          arguments: options.arguments ?? {},
         })
         .build()
 

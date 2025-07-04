@@ -10,3 +10,5 @@ services:
     environment:
       RABBITMQ_DEFAULT_USER: "rabbit"
       RABBITMQ_DEFAULT_PASS: "rabbit"
+    volumes:
+      - ./conf/:/etc/rabbitmq/

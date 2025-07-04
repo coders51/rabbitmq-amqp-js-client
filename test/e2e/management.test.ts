@@ -114,6 +114,21 @@ describe("Management", () => {
     })
   })
 
+  test("create an exchange with custom type", async () => {
+    const customType = "x-consistent-hash" // requires plugin rabbitmq_consistent_hash_exchange enabled
+    const exchange = await management.declareExchange(exchangeName, {
+      type: customType,
+      auto_delete: true,
+      durable: false,
+    })
+
+    await eventually(async () => {
+      const exchangeInfo = await getExchangeInfo(exchange.getInfo.name)
+      expect(exchangeInfo.ok).to.eql(true)
+      expect(exchangeInfo.body.type).to.eql(customType)
+    })
+  })
+
   test("delete an exchange through the management", async () => {
     await createExchange(exchangeName)
     await eventually(async () => {

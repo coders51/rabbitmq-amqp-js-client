@@ -29,6 +29,8 @@ jobs:
         ports:
           - 5672:5672
           - 15672:15672
+        volumes:
+          - ./conf/:/etc/rabbitmq/
 
     steps:
       - uses: actions/checkout@v3
