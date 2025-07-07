@@ -1,12 +1,35 @@
 export type QueueType = "classic" | "stream" | "quorum"
 
-export type QueueOptions = {
-  type: QueueType
+export type QuorumDeadLetterStrategy = "at-most-once" | "at-least-once"
+
+export type ClassicQueueMode = "default" | "lazy"
+
+export type ClassicQueueVersion = 1 | 2
+
+type BaseQueueOptions = {
   exclusive: boolean
   autoDelete: boolean
-  durable: boolean
   arguments: Record<string, string>
 }
+
+export type ClassicQueueOptions = BaseQueueOptions & {
+  type: Exclude<QueueType, "quorum">
+  durable: boolean
+  maxPriority: number
+  mode: ClassicQueueMode
+  version: ClassicQueueVersion
+}
+
+export type QuorumQueueOptions = BaseQueueOptions & {
+  type: "quorum"
+  durable: true
+  deadLetterStrategy: QuorumDeadLetterStrategy
+  deliveryLimit: number
+  initialGroupSize: number
+  targetGroupSize: number
+}
+
+export type QueueOptions = ClassicQueueOptions | QuorumQueueOptions
 
 export type QueueInfo = {
   name: string
