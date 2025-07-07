@@ -4,7 +4,7 @@ export type ExchangeOptions = {
   arguments: Record<string, string>
   auto_delete: boolean
   durable: boolean
-  type: ExchangeType
+  type: ExchangeType | string
 }
 
 export interface ExchangeInfo {
@@ -12,7 +12,7 @@ export interface ExchangeInfo {
   arguments: Record<string, string>
   autoDelete: boolean
   durable: boolean
-  type: ExchangeType
+  type: ExchangeType | string
 }
 
 export interface Exchange {
