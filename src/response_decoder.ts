@@ -9,7 +9,10 @@ interface ResponseDecoder {
 export class CreateQueueResponseDecoder implements ResponseDecoder {
   decodeFrom(receivedMessage: Message, sentMessageId: string): Result<QueueInfo, Error> {
     if (isError(receivedMessage) || sentMessageId !== receivedMessage.correlation_id) {
-      return { status: "error", error: new Error(`Message Error: ${receivedMessage.subject}`) }
+      return {
+        status: "error",
+        error: new Error(`Message Error: ${receivedMessage.subject}; ${receivedMessage.body}`),
+      }
     }
 
     return {
