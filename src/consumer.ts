@@ -19,8 +19,9 @@ import {
 } from "./utils.js"
 import { createConsumerAddressFrom } from "./message.js"
 import { QueueOptions } from "./message.js"
+import { AmqpDeliveryContext, DeliveryContext } from "./delivery_context.js"
 
-export type ConsumerMessageHandler = (message: Message) => void
+export type ConsumerMessageHandler = (context: DeliveryContext, message: Message) => void
 
 export type StreamOptions = {
   name: string
@@ -102,13 +103,11 @@ export class AmqpConsumer implements Consumer {
 
   start() {
     this.receiverLink.on(ReceiverEvents.message, (context: EventContext) => {
+      console.log("Received")
       if (context.message && context.delivery) {
-        try {
-          this.params.messageHandler(context.message)
-          context.delivery.accept()
-        } catch (e) {
-          context.delivery.reject({ condition: "Message Handler error", info: e })
-        }
+        console.log("in if", context.message)
+        const deliveryContext = new AmqpDeliveryContext(context.delivery, context.message)
+        this.params.messageHandler(deliveryContext, context.message)
       }
     })
   }
