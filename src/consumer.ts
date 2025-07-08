@@ -81,16 +81,12 @@ export class AmqpConsumer implements Consumer {
 
   start() {
     this.receiverLink.on(ReceiverEvents.message, (context: EventContext) => {
-      console.log("message received", context.message?.body)
       if (context.message && context.delivery) {
-        console.log("message accepted")
         try {
           this.params.messageHandler(context.message)
           context.delivery.accept()
-          console.log("message consumed")
         } catch (e) {
           context.delivery.reject({ condition: "Message Handler error", info: e })
-          console.log("message rejected")
         }
       }
     })
