@@ -51,9 +51,9 @@ describe("Consumer", () => {
       type: "quorum",
       durable: true,
     })
-    deadLetterQueue = await management.declareQueue(deadLetterQueueName, { type: "quorum", durable: true })
+    deadLetterQueue = await management.declareQueue(deadLetterQueueName, { exclusive: true })
     exchange = await management.declareExchange(exchangeName)
-    deadLetterExchange = await management.declareExchange(deadLetterExchangeName, { type: "fanout" })
+    deadLetterExchange = await management.declareExchange(deadLetterExchangeName, { type: "fanout", auto_delete: true })
     await management.bind(bindingKey, { source: exchange, destination: queue })
     await management.bind(deadLetterBindingKey, { source: deadLetterExchange, destination: deadLetterQueue })
   })
@@ -253,7 +253,7 @@ describe("Consumer", () => {
     const consumerDeadLetter = await connection.createConsumer({
       queue: { name: deadLetterQueueName },
       messageHandler: (context, message) => {
-        console.log("in dl", Object.getOwnPropertySymbols(message.message_annotations))
+        console.log("in dl", message.message_annotations)
         receivedAnnotations = message.message_annotations
         context.accept()
       },

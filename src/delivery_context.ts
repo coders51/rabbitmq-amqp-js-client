@@ -1,4 +1,4 @@
-import { Delivery, Message, MessageAnnotations } from "rhea"
+import { Delivery, MessageAnnotations } from "rhea"
 
 export interface DeliveryContext {
   accept(): void
@@ -7,19 +7,14 @@ export interface DeliveryContext {
 }
 
 export class AmqpDeliveryContext implements DeliveryContext {
-  constructor(
-    private readonly delivery: Delivery,
-    private readonly message: Message
-  ) {}
+  constructor(private readonly delivery: Delivery) {}
 
   accept(): void {
-    console.log("accepted")
     this.delivery.accept()
   }
 
   discard(annotations?: MessageAnnotations): void {
     if (!annotations) {
-      console.log(this.message)
       this.delivery.reject()
       return
     }
@@ -29,15 +24,11 @@ export class AmqpDeliveryContext implements DeliveryContext {
   }
 
   private discardWithAnnotations(annotations: MessageAnnotations): void {
-    const messageAnnotations: MessageAnnotations = {}
-    for (const elem of Object.entries(annotations)) {
-      Object.defineProperty(messageAnnotations, Symbol(elem[0]), { value: elem[1] })
-    }
-
+    console.log("testAAAAA", annotations)
     const message = {
       delivery_failed: true,
       undeliverable_here: true,
-      message_annotations: messageAnnotations,
+      message_annotations: annotations,
     }
     this.delivery.modified(message)
   }
@@ -54,15 +45,12 @@ export class AmqpDeliveryContext implements DeliveryContext {
   }
 
   private requeueWithAnnotations(annotations: MessageAnnotations): void {
-    const messageAnnotations: MessageAnnotations = {}
-    for (const elem of Object.entries(annotations)) {
-      Object.defineProperty(messageAnnotations, Symbol(elem[0]), { value: elem[1] })
-    }
+    console.log("requeue", annotations)
 
     const message = {
       delivery_failed: false,
       undeliverable_here: false,
-      message_annotations: messageAnnotations,
+      message_annotations: annotations,
     }
     this.delivery.modified(message)
   }

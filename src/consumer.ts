@@ -106,7 +106,7 @@ export class AmqpConsumer implements Consumer {
       console.log("Received")
       if (context.message && context.delivery) {
         console.log("in if", context.message)
-        const deliveryContext = new AmqpDeliveryContext(context.delivery, context.message)
+        const deliveryContext = new AmqpDeliveryContext(context.delivery)
         this.params.messageHandler(deliveryContext, context.message)
       }
     })
