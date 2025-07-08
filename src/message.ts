@@ -1,4 +1,4 @@
-import { generate_uuid, Message as RheaMessage } from "rhea"
+import { generate_uuid, MessageAnnotations, Message as RheaMessage } from "rhea"
 import { AmqpEndpoints } from "./link_message_builder.js"
 import { inspect } from "util"
 
@@ -16,6 +16,7 @@ export type DestinationOptions = { exchange: ExchangeOptions } | { queue: QueueO
 type MessageOptions = {
   body: string
   destination?: DestinationOptions
+  annotations?: MessageAnnotations
 }
 
 export function createAmqpMessage(options: MessageOptions): RheaMessage {
@@ -25,10 +26,16 @@ export function createAmqpMessage(options: MessageOptions): RheaMessage {
       body: options.body,
       to: createAddressFrom(options.destination),
       durable: true,
+      message_annotations: options.annotations ?? {},
     }
   }
 
-  return { message_id: generate_uuid(), body: options.body, durable: true }
+  return {
+    message_id: generate_uuid(),
+    body: options.body,
+    durable: true,
+    message_annotations: options.annotations ?? {},
+  }
 }
 
 export function createAddressFrom(options?: DestinationOptions): string | undefined {

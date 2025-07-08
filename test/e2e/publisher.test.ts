@@ -24,6 +24,7 @@ describe("Publisher", () => {
   const queueName2 = "test-queue-2"
   const bindingKey = "test-key"
   const bindingKey2 = "test-key-2"
+  const streamName = "test-stream"
 
   beforeEach(async () => {
     environment = createEnvironment({
@@ -116,5 +117,20 @@ describe("Publisher", () => {
     )
 
     expect(publishResult.outcome).to.eql(OutcomeState.RELEASED)
+  })
+
+  test("publish a message to a stream", async () => {
+    const management = connection.management()
+    await management.declareQueue(streamName, { type: "stream" })
+    const publisher = await connection.createPublisher({ queue: { name: streamName } })
+
+    const publishResult = await publisher.publish(
+      createAmqpMessage({
+        body: "Hello World!",
+        annotations: { "x-stream-filter-value": "invoices" },
+      })
+    )
+
+    expect(publishResult.outcome).to.eql(OutcomeState.ACCEPTED)
   })
 })
