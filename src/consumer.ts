@@ -7,19 +7,38 @@ import {
   SenderOptions,
   EventContext,
   Message,
+  Dictionary,
 } from "rhea"
-import { openLink } from "./utils.js"
-import { createAddressFrom } from "./message.js"
+import {
+  Offset,
+  openLink,
+  SourceFilter,
+  STREAM_FILTER_MATCH_UNFILTERED,
+  STREAM_FILTER_SPEC,
+  STREAM_OFFSET_SPEC,
+} from "./utils.js"
+import { createConsumerAddressFrom } from "./message.js"
+import { QueueOptions } from "./message.js"
 
 export type ConsumerMessageHandler = (message: Message) => void
 
-export type CreateConsumerParams = {
+export type StreamOptions = {
+  name: string
+  offset?: Offset
+  filterValues?: string[]
+  matchUnfiltered?: boolean
+}
+
+export type SourceOptions = { stream: StreamOptions } | { queue: QueueOptions }
+
+export type CreateConsumerParams = SourceOptions & {
   messageHandler: ConsumerMessageHandler
 }
 
 const getConsumerReceiverLinkConfigurationFrom = (
   address: string,
-  consumerId: string
+  consumerId: string,
+  filter?: SourceFilter
 ): SenderOptions | ReceiverOptions => ({
   snd_settle_mode: 0,
   rcv_settle_mode: 0,
@@ -31,6 +50,7 @@ const getConsumerReceiverLinkConfigurationFrom = (
     timeout: 0,
     dynamic: false,
     durable: 0,
+    filter,
   },
 })
 
@@ -41,27 +61,28 @@ export interface Consumer {
 }
 
 export class AmqpConsumer implements Consumer {
-  static async createFrom(
-    connection: Connection,
-    consumersList: Map<string, Consumer>,
-    queueName: string,
-    params: CreateConsumerParams
-  ) {
+  static async createFrom(connection: Connection, consumersList: Map<string, Consumer>, params: CreateConsumerParams) {
     const id = generate_uuid()
-    const address = createAddressFrom({ queue: { name: queueName } })
+    const address = createConsumerAddressFrom(params)
+    const filter = createConsumerFilterFrom(params)
     if (!address) throw new Error("Consumer must have an address")
 
-    const receiverLink = await AmqpConsumer.openReceiver(connection, address, id)
+    const receiverLink = await AmqpConsumer.openReceiver(connection, address, id, filter)
     return new AmqpConsumer(id, connection, consumersList, receiverLink, params)
   }
 
-  private static async openReceiver(connection: Connection, address: string, consumerId: string): Promise<Receiver> {
+  private static async openReceiver(
+    connection: Connection,
+    address: string,
+    consumerId: string,
+    filter?: SourceFilter
+  ): Promise<Receiver> {
     return openLink<Receiver>(
       connection,
       ReceiverEvents.receiverOpen,
       ReceiverEvents.receiverError,
       connection.open_receiver.bind(connection),
-      getConsumerReceiverLinkConfigurationFrom(address, consumerId)
+      getConsumerReceiverLinkConfigurationFrom(address, consumerId, filter)
     )
   }
 
@@ -97,4 +118,26 @@ export class AmqpConsumer implements Consumer {
     if (this.receiverLink.is_open()) this.receiverLink.close()
     if (this.consumersList.has(this._id)) this.consumersList.delete(this._id)
   }
+}
+
+function createConsumerFilterFrom(params: CreateConsumerParams): SourceFilter | undefined {
+  if ("queue" in params) {
+    return undefined
+  }
+  if (!params.stream.offset && !params.stream.filterValues) {
+    throw new Error("At least one between offset and filterValues must be set when using filtering")
+  }
+
+  const filters: Dictionary<string | bigint | boolean | string[]> = {}
+  if (params.stream.offset) {
+    filters[STREAM_OFFSET_SPEC] = params.stream.offset.toValue()
+  }
+  if (params.stream.filterValues) {
+    filters[STREAM_FILTER_SPEC] = params.stream.filterValues
+  }
+  if (params.stream.matchUnfiltered) {
+    filters[STREAM_FILTER_MATCH_UNFILTERED] = params.stream.matchUnfiltered
+  }
+
+  return filters
 }

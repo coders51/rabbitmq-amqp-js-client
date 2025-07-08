@@ -1,6 +1,7 @@
 import { generate_uuid, MessageAnnotations, Message as RheaMessage } from "rhea"
 import { AmqpEndpoints } from "./link_message_builder.js"
 import { inspect } from "util"
+import { CreateConsumerParams } from "./consumer.js"
 
 export type ExchangeOptions = {
   name: string
@@ -24,21 +25,16 @@ export function createAmqpMessage(options: MessageOptions): RheaMessage {
     return {
       message_id: generate_uuid(),
       body: options.body,
-      to: createAddressFrom(options.destination),
+      to: createPublisherAddressFrom(options.destination),
       durable: true,
-      message_annotations: options.annotations ?? {},
+      message_annotations: options.annotations,
     }
   }
 
-  return {
-    message_id: generate_uuid(),
-    body: options.body,
-    durable: true,
-    message_annotations: options.annotations ?? {},
-  }
+  return { message_id: generate_uuid(), body: options.body, durable: true, message_annotations: options.annotations }
 }
 
-export function createAddressFrom(options?: DestinationOptions): string | undefined {
+export function createPublisherAddressFrom(options?: DestinationOptions): string | undefined {
   if (!options) return undefined
   if ("queue" in options) return `/${AmqpEndpoints.Queues}/${options.queue.name}`
   if ("exchange" in options) {
@@ -48,4 +44,11 @@ export function createAddressFrom(options?: DestinationOptions): string | undefi
   }
 
   throw new Error(`Unknown publisher options -- ${inspect(options)}`)
+}
+
+export function createConsumerAddressFrom(params: CreateConsumerParams): string | undefined {
+  if ("queue" in params) return `/${AmqpEndpoints.Queues}/${params.queue.name}`
+  if ("stream" in params) return `/${AmqpEndpoints.Queues}/${params.stream.name}`
+
+  throw new Error(`Unknown publisher options -- ${inspect(params)}`)
 }

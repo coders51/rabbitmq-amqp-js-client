@@ -108,7 +108,8 @@ describe("Connection", () => {
   })
 
   test("create a consumer linked to a queue", async () => {
-    await connection.createConsumer(queueName, {
+    await connection.createConsumer({
+      queue: { name: queueName },
       messageHandler: async (msg) => {
         console.log(msg)
       },
@@ -118,7 +119,8 @@ describe("Connection", () => {
   })
 
   test("close a consumer", async () => {
-    const consumer = await connection.createConsumer(queueName, {
+    const consumer = await connection.createConsumer({
+      queue: { name: queueName },
       messageHandler: async (msg) => {
         console.log(msg)
       },
@@ -131,7 +133,8 @@ describe("Connection", () => {
 
   test("closing the connection also closes the consumer", async () => {
     const newConnection = await environment.createConnection()
-    await newConnection.createConsumer(queueName, {
+    await newConnection.createConsumer({
+      queue: { name: queueName },
       messageHandler: async (msg) => {
         console.log(msg)
       },
