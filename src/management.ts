@@ -1,5 +1,5 @@
 import { AmqpExchange, Exchange, ExchangeInfo, ExchangeOptions } from "./exchange.js"
-import { AmqpQueue, Queue, QueueOptions, QueueType } from "./queue.js"
+import { AmqpQueue, Queue, QueueType, QueueOptions, QuorumQueueOptions, ClassicQueueOptions } from "./queue.js"
 import {
   EventContext,
   Receiver,
@@ -111,12 +111,7 @@ export class AmqpManagement implements Management {
         .sendTo(`/${AmqpEndpoints.Queues}/${encodeURIComponent(queueName)}`)
         .setReplyTo(ME)
         .setAmqpMethod(AmqpMethods.PUT)
-        .setBody({
-          exclusive: options.exclusive ?? false,
-          durable: options.durable ?? false,
-          auto_delete: options.autoDelete ?? false,
-          arguments: buildArgumentsFrom(options.type, options.arguments),
-        })
+        .setBody(buildDeclareQueueBody(options))
         .build()
       this.senderLink.send(message)
     })
@@ -295,7 +290,46 @@ export class AmqpManagement implements Management {
   }
 }
 
-function buildArgumentsFrom(queueType?: QueueType, queueOptions?: Record<string, string>) {
+function buildDeclareQueueBody(options: Partial<QueueOptions>) {
+  const body = {
+    exclusive: options.exclusive ?? false,
+    durable: options.durable ?? true, // needed at least by quorum queue type
+    auto_delete: options.autoDelete ?? false,
+    arguments: buildArgumentsFrom(options.type, options.arguments),
+  }
+  switch (options.type) {
+    case "quorum":
+      body.arguments = addQuorumArgumentsFrom(body.arguments, options)
+      return body
+    case "classic":
+      body.arguments = addClassicArgumentsFrom(body.arguments, options)
+      return body
+    case "stream":
+    default:
+      return body
+  }
+}
+
+function addQuorumArgumentsFrom(args: Record<string, unknown>, options: Partial<QuorumQueueOptions>) {
+  return {
+    ...args,
+    ...(options.deadLetterStrategy ? { "x-dead-letter-strategy": options.deadLetterStrategy } : {}),
+    ...(options.deliveryLimit ? { "x-max-delivery-limit": options.deliveryLimit } : {}),
+    ...(options.initialGroupSize ? { "x-quorum-initial-group-size": options.initialGroupSize } : {}),
+    ...(options.targetGroupSize ? { "x-quorum-target-group-size": options.targetGroupSize } : {}),
+  }
+}
+
+function addClassicArgumentsFrom(args: Record<string, unknown>, options: Partial<ClassicQueueOptions>) {
+  return {
+    ...args,
+    ...(options.maxPriority ? { "x-max-priority": options.maxPriority } : {}),
+    ...(options.mode ? { "x-queue-mode": options.mode } : {}),
+    ...(options.version ? { "x-queue-version": options.version } : {}),
+  }
+}
+
+function buildArgumentsFrom(queueType?: QueueType, queueOptions?: Record<string, string>): Record<string, unknown> {
   return { ...(queueOptions ?? {}), ...(queueType ? { "x-queue-type": queueType } : {}) }
 }
 
