@@ -1,1 +1,1 @@
-[rabbit_stream,rabbitmq_stream_management,rabbitmq_consistent_hash_exchange].
+[rabbit_stream,rabbitmq_stream_management,rabbitmq_management,rabbitmq_top,rabbitmq_consistent_hash_exchange].

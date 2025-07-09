@@ -49,8 +49,12 @@ async function main() {
   publisher.close()
 
   console.log("Opening a consumer and consuming messages...")
-  const consumer = await connection.createConsumer(testQueue, {
-    messageHandler: (msg) => console.log(`MessageId: ${msg.message_id}; Payload: ${msg.body}`),
+  const consumer = await connection.createConsumer({
+    queue: { name: testQueue },
+    messageHandler: (context, msg) => {
+      context.accept()
+      console.log(`MessageId: ${msg.message_id}; Payload: ${msg.body}`)
+    },
   })
   consumer.start()
   await sleep(5000)
