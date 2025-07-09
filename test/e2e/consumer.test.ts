@@ -237,7 +237,7 @@ describe("Consumer", () => {
         body: expectedBody,
       })
     )
-    let receivedAnnotations: MessageAnnotations | undefined
+    let receivedAnnotationValue: string | undefined = ""
     const consumer = await connection.createConsumer({
       queue: { name: discardQueueName },
       messageHandler: (context, message) => {
@@ -254,7 +254,9 @@ describe("Consumer", () => {
       queue: { name: deadLetterQueueName },
       messageHandler: (context, message) => {
         console.log("in dl", message.message_annotations)
-        receivedAnnotations = message.message_annotations
+        receivedAnnotationValue = message.message_annotations
+          ? message.message_annotations["x-opt-annotation-key"]
+          : undefined
         context.accept()
       },
     })
@@ -262,7 +264,7 @@ describe("Consumer", () => {
     await wait(3000)
 
     await eventually(() => {
-      expect(receivedAnnotations).toMatchObject({ [Symbol("x-opt-annotation-key")]: "annotation-value" })
+      expect(receivedAnnotationValue).eql("annotation-value")
     })
   }, 15000)
 
