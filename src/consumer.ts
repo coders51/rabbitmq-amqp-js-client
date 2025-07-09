@@ -103,9 +103,7 @@ export class AmqpConsumer implements Consumer {
 
   start() {
     this.receiverLink.on(ReceiverEvents.message, (context: EventContext) => {
-      console.log("Received")
       if (context.message && context.delivery) {
-        console.log("in if", context.message)
         const deliveryContext = new AmqpDeliveryContext(context.delivery)
         this.params.messageHandler(deliveryContext, context.message)
       }
