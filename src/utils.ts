@@ -1,5 +1,6 @@
 import {
   Connection,
+  Dictionary,
   Message,
   Receiver,
   ReceiverEvents,
@@ -28,6 +29,12 @@ export enum OutcomeState {
 export const DURABLE = 1
 export const AUTO_DELETE = 1
 export const EXCLUSIVE = 1
+
+export const STREAM_FILTER_SPEC = "rabbitmq:stream-filter"
+export const STREAM_OFFSET_SPEC = "rabbitmq:stream-offset-spec"
+export const STREAM_FILTER_MATCH_UNFILTERED = "rabbitmq:stream-match-unfiltered"
+
+export type SourceFilter = Dictionary<string | bigint | boolean | string[]>
 
 export type Result<T, K> = OkResult<T> | ErrorResult<K>
 
@@ -84,4 +91,44 @@ export async function openLink<T extends Sender | Receiver>(
     })
     openMethod(config)
   })
+}
+
+export enum OffsetType {
+  first = "first",
+  last = "last",
+  next = "next",
+  numeric = "numeric",
+  timestamp = "timestamp",
+}
+
+export class Offset {
+  private constructor(
+    public readonly type: OffsetType,
+    public readonly value?: bigint
+  ) {}
+
+  toValue() {
+    if (this.value && (this.type === OffsetType.numeric || this.type === OffsetType.timestamp)) return this.value
+    return this.type.toString()
+  }
+
+  static first() {
+    return new Offset(OffsetType.first)
+  }
+
+  static last() {
+    return new Offset(OffsetType.last)
+  }
+
+  static next() {
+    return new Offset(OffsetType.next)
+  }
+
+  static offset(offset: bigint) {
+    return new Offset(OffsetType.numeric, offset)
+  }
+
+  static timestamp(date: Date) {
+    return new Offset(OffsetType.timestamp, BigInt(date.getTime()))
+  }
 }

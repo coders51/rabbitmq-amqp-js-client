@@ -2,7 +2,7 @@ import { Connection, Delivery, EventContext, Message, ReceiverOptions, Sender, S
 import { openLink, OutcomeState } from "./utils.js"
 import { randomUUID } from "crypto"
 import { inspect } from "util"
-import { createAddressFrom, DestinationOptions } from "./message.js"
+import { createPublisherAddressFrom, DestinationOptions } from "./message.js"
 
 const getPublisherSenderLinkConfigurationFrom = (
   publisherId: string,
@@ -47,7 +47,7 @@ export class AmqpPublisher implements Publisher {
     publishersList: Map<string, Publisher>,
     options?: DestinationOptions
   ): Promise<Publisher> {
-    const address = createAddressFrom(options)
+    const address = createPublisherAddressFrom(options)
     const id = randomUUID()
     const senderLink = await AmqpPublisher.openSender(connection, id, address)
     return new AmqpPublisher(connection, senderLink, id, publishersList)

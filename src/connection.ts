@@ -12,7 +12,7 @@ export interface Connection {
   createPublisher(options?: DestinationOptions): Promise<Publisher>
   get publishers(): Map<string, Publisher>
   get consumers(): Map<string, Consumer>
-  createConsumer(queueName: string, params: CreateConsumerParams): Promise<Consumer>
+  createConsumer(params: CreateConsumerParams): Promise<Consumer>
 }
 
 export class AmqpConnection implements Connection {
@@ -59,8 +59,8 @@ export class AmqpConnection implements Connection {
     })
   }
 
-  async createConsumer(queueName: string, params: CreateConsumerParams): Promise<Consumer> {
-    const consumer = await AmqpConsumer.createFrom(this.connection, this._consumers, queueName, params)
+  async createConsumer(params: CreateConsumerParams): Promise<Consumer> {
+    const consumer = await AmqpConsumer.createFrom(this.connection, this._consumers, params)
     this._consumers.set(consumer.id, consumer)
     return consumer
   }
