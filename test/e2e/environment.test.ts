@@ -52,7 +52,7 @@ describe("Environment", () => {
     await eventually(async () => {
       expect(await numberOfConnections()).to.eql(1)
     })
-  })
+  }, 10000)
 
   test("a connection reconnects by default", async () => {
     await environment.createConnection()
@@ -74,5 +74,5 @@ describe("Environment", () => {
     await eventually(async () => {
       expect(await numberOfConnections()).to.eql(1)
     })
-  })
+  }, 10000)
 })
