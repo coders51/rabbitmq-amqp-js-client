@@ -25,4 +25,12 @@ describe("Environment", () => {
       expect(await numberOfConnections()).to.eql(1)
     })
   })
+
+  test("create a connection with reconnect true", async () => {
+    await environment.createConnection({ reconnect: true })
+
+    await eventually(async () => {
+      expect(await numberOfConnections()).to.eql(1)
+    })
+  })
 })
