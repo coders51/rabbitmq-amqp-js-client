@@ -1,7 +1,7 @@
-import { AmqpConnection, Connection } from "./connection.js"
+import { AmqpConnection, Connection, ConnectionParams } from "./connection.js"
 
 export interface Environment {
-  createConnection(): Promise<Connection>
+  createConnection(params?: ConnectionParams): Promise<Connection>
   close(): Promise<void>
 }
 
@@ -18,8 +18,8 @@ export class AmqpEnvironment implements Environment {
     private readonly connections: Connection[] = []
   ) {}
 
-  async createConnection(): Promise<Connection> {
-    const connection = await AmqpConnection.create(this.params)
+  async createConnection(params?: ConnectionParams): Promise<Connection> {
+    const connection = await AmqpConnection.create(this.params, params)
     this.connections.push(connection)
     return connection
   }

@@ -12,7 +12,7 @@ describe("Rhea connections", () => {
   })
 
   afterEach(async () => {
-    await closeConnection(connection)
+    if (connection) await closeConnection(connection)
   })
 
   test("create a connection", async () => {

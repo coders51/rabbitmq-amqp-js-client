@@ -1,4 +1,4 @@
-import { ConnectionEvents, create_container, Connection as RheaConnection } from "rhea"
+import { ConnectionEvents, ConnectionOptions, create_container, Connection as RheaConnection } from "rhea"
 import { AmqpManagement, Management } from "./management.js"
 import { EnvironmentParams } from "./environment.js"
 import { AmqpPublisher, Publisher } from "./publisher.js"
@@ -15,17 +15,26 @@ export interface Connection {
   createConsumer(params: CreateConsumerParams): Promise<Consumer>
 }
 
+export type ConnectionParams =
+  | { reconnect: false }
+  | {
+      reconnect: true | number
+      initialReconnectDelay?: number
+      maxReconnectDelay?: number
+      reconnectLimit?: number
+    }
+
 export class AmqpConnection implements Connection {
   private _publishers: Map<string, Publisher> = new Map<string, Publisher>()
   private _consumers: Map<string, Consumer> = new Map<string, Consumer>()
 
-  static async create(params: EnvironmentParams) {
-    const connection = await AmqpConnection.open(params)
+  static async create(envParams: EnvironmentParams, connParams?: ConnectionParams) {
+    const connection = await AmqpConnection.open(envParams, connParams)
     const topologyManagement = await AmqpManagement.create(connection)
     return new AmqpConnection(connection, topologyManagement)
   }
 
-  private static async open(params: EnvironmentParams): Promise<RheaConnection> {
+  private static async open(envParams: EnvironmentParams, connParams?: ConnectionParams): Promise<RheaConnection> {
     return new Promise((res, rej) => {
       const container = create_container()
       container.once(ConnectionEvents.connectionOpen, (context) => {
@@ -35,7 +44,7 @@ export class AmqpConnection implements Connection {
         return rej(context.error ?? new Error("Connection error occurred"))
       })
 
-      container.connect(params)
+      container.connect(buildConnectParams(envParams, connParams))
     })
   }
 
@@ -86,4 +95,26 @@ export class AmqpConnection implements Connection {
   public isOpen(): boolean {
     return this.connection ? this.connection.is_open() : false
   }
+}
+
+function buildConnectParams(envParams: EnvironmentParams, connParams?: ConnectionParams): ConnectionOptions {
+  return {
+    ...envParams,
+    ...buildReconnectParams(connParams),
+  }
+}
+
+function buildReconnectParams(connParams?: ConnectionParams) {
+  if (connParams && connParams.reconnect) {
+    return {
+      reconnect: connParams.reconnect,
+      initial_reconnect_delay: connParams.initialReconnectDelay,
+      max_reconnect_delay: connParams.maxReconnectDelay,
+      reconnect_limit: connParams.reconnectLimit,
+    }
+  }
+
+  if (connParams && !connParams.reconnect) return { reconnect: false }
+
+  return { reconnect: true }
 }
