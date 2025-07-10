@@ -44,6 +44,15 @@ export const vhost = encodeURIComponent("/")
 export const username = process.env.RABBITMQ_USER ?? "rabbit"
 export const password = process.env.RABBITMQ_PASSWORD ?? "rabbit"
 
+export async function getConnections(): Promise<ConnectionInfoResponse[]> {
+  const ret = await got.get<ConnectionInfoResponse[]>(`http://${host}:${managementPort}/api/connections`, {
+    username,
+    password,
+    responseType: "json",
+  })
+  return ret.body
+}
+
 export async function numberOfConnections(): Promise<number> {
   const response = await got.get<ConnectionInfoResponse[]>(`http://${host}:${managementPort}/api/connections`, {
     username,
@@ -52,6 +61,19 @@ export async function numberOfConnections(): Promise<number> {
   })
 
   return response.body.length
+}
+
+export async function closeAllConnections(): Promise<void> {
+  const l = await getConnections()
+  await Promise.all(l.map((c) => closeConnection(c.name)))
+}
+
+export async function closeConnection(name: string) {
+  return got.delete(`http://${host}:${managementPort}/api/connections/${name}`, {
+    username,
+    password,
+    responseType: "json",
+  })
 }
 
 export async function existsQueue(queueName: string): Promise<boolean> {

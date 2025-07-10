@@ -15,13 +15,14 @@ export interface Connection {
   createConsumer(params: CreateConsumerParams): Promise<Consumer>
 }
 
-type ReconnectionParamsDetails = { initialReconnectDelay: number; maxReconnectDelay: number; reconnectLimit: number }
-
-export type ReconnectionParams = false | true | number | ReconnectionParamsDetails
-
-export type ConnectionParams = {
-  reconnect: ReconnectionParams
-}
+export type ConnectionParams =
+  | { reconnect: false }
+  | {
+      reconnect: true | number
+      initialReconnectDelay?: number
+      maxReconnectDelay?: number
+      reconnectLimit?: number
+    }
 
 export class AmqpConnection implements Connection {
   private _publishers: Map<string, Publisher> = new Map<string, Publisher>()
@@ -99,31 +100,21 @@ export class AmqpConnection implements Connection {
 function buildConnectParams(envParams: EnvironmentParams, connParams?: ConnectionParams): ConnectionOptions {
   return {
     ...envParams,
-    ...(buildReconnectParams(connParams) as ConnectionOptions), // FIXME
+    ...buildReconnectParams(connParams),
   }
 }
 
 function buildReconnectParams(connParams?: ConnectionParams) {
-  if (connParams && isReconnectionParamsDetails(connParams.reconnect)) {
+  if (connParams && connParams.reconnect) {
     return {
-      reconnect: {
-        initial_reconnect_delay: connParams.reconnect.initialReconnectDelay,
-        max_reconnect_delay: connParams.reconnect.maxReconnectDelay,
-        reconnect_limit: connParams.reconnect.reconnectLimit,
-      },
+      reconnect: connParams.reconnect,
+      initial_reconnect_delay: connParams.initialReconnectDelay,
+      max_reconnect_delay: connParams.maxReconnectDelay,
+      reconnect_limit: connParams.reconnectLimit,
     }
   }
-  if (connParams) return { reconnect: connParams.reconnect }
+
+  if (connParams && !connParams.reconnect) return { reconnect: false }
 
   return { reconnect: true }
-}
-
-export function isReconnectionParamsDetails(value: ReconnectionParams): value is ReconnectionParamsDetails {
-  return (
-    typeof value === "object" &&
-    value !== null &&
-    typeof (value as ReconnectionParamsDetails).initialReconnectDelay === "number" &&
-    typeof (value as ReconnectionParamsDetails).maxReconnectDelay === "number" &&
-    typeof (value as ReconnectionParamsDetails).reconnectLimit === "number"
-  )
 }
