@@ -1,9 +1,9 @@
-import { Delivery, Receiver } from "rhea"
+import { Delivery, MessageAnnotations, Receiver } from "rhea"
 
 export interface DeliveryContext {
   accept(): void
-  discard(): void
-  requeue(): void
+  discard(annotations?: MessageAnnotations): void
+  requeue(annotations?: MessageAnnotations): void
 }
 
 export class AmqpDeliveryContext implements DeliveryContext {
@@ -18,15 +18,39 @@ export class AmqpDeliveryContext implements DeliveryContext {
     this.delivery.accept()
   }
 
-  discard(): void {
+  discard(annotations?: MessageAnnotations): void {
     if (this.receiverLink.is_closed()) throw new Error("Receiver link is closed")
+    if (!annotations) {
+      this.delivery.reject()
+      return
+    }
 
-    this.delivery.reject()
+    this.discardWithAnnotations(annotations)
   }
 
-  requeue(): void {
-    if (this.receiverLink.is_closed()) throw new Error("Receiver link is closed")
+  private discardWithAnnotations(annotations: MessageAnnotations): void {
+    this.delivery.modified({
+      delivery_failed: true,
+      undeliverable_here: true,
+      message_annotations: annotations,
+    })
+  }
 
-    this.delivery.release()
+  requeue(annotations?: MessageAnnotations): void {
+    if (this.receiverLink.is_closed()) throw new Error("Receiver link is closed")
+    if (!annotations) {
+      this.delivery.release()
+      return
+    }
+
+    this.requeueWithAnnotations(annotations)
+  }
+
+  private requeueWithAnnotations(annotations: MessageAnnotations): void {
+    this.delivery.modified({
+      delivery_failed: false,
+      undeliverable_here: false,
+      message_annotations: annotations,
+    })
   }
 }
