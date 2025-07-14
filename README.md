@@ -1,6 +1,6 @@
 # RabbitMQ AMQP 1.0 JavaScript Client
 
-This library is meant to be used with RabbitMQ 4.0. </br>
+This library is meant to be used with RabbitMQ `4.x`. </br>
 Suitable for testing in pre-production environments. The public API(s) could change.
 
 [![Build Status](https://github.com/coders51/rabbitmq-amqp-js-client/actions/workflows/main.yml/badge.svg)](https://github.com/coders51/rabbitmq-amqp-js-client/actions)
