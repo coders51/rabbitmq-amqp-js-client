@@ -236,11 +236,12 @@ describe("Consumer", () => {
         body: expectedBody,
       })
     )
+    const symKey = Symbol.for("x-opt-annotation-key")
     let receivedAnnotationValue: string | undefined = ""
     const consumer = await connection.createConsumer({
       queue: { name: discardQueueName },
       messageHandler: (context) => {
-        context.discard({ "x-opt-annotation-key": "annotation-value" })
+        context.discard({ [symKey]: "annotation-value" })
       },
     })
     consumer.start()
@@ -251,8 +252,9 @@ describe("Consumer", () => {
     const consumerDeadLetter = await connection.createConsumer({
       queue: { name: deadLetterQueueName },
       messageHandler: (context, message) => {
+        console.log("A", message.message_annotations)
         receivedAnnotationValue = message.message_annotations
-          ? message.message_annotations["x-opt-annotation-key"]
+          ? message.message_annotations[symKey as unknown as string]
           : undefined
         context.accept()
       },
