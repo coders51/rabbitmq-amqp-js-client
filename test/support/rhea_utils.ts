@@ -10,6 +10,7 @@ import {
   SenderEvents,
   SenderOptions,
 } from "rhea"
+import { WebSocket } from "ws"
 
 export const testExchangeName = "test-exchange"
 export const testQueueName = "test-queue"
@@ -23,6 +24,19 @@ export async function openConnection(container: Container, params: ConnectionOpt
       return rej(context.connection.error)
     })
     container.connect(params)
+  })
+}
+
+export async function openWebSocketConnection(container: Container, url: string): Promise<Connection> {
+  const ws = container.websocket_connect(WebSocket)
+  return new Promise((res, rej) => {
+    container.once(ConnectionEvents.connectionOpen, (context) => {
+      return res(context.connection)
+    })
+    container.once(ConnectionEvents.error, (context) => {
+      return rej(context.connection.error)
+    })
+    container.connect({ connection_details: ws(url, ["amqp"], {}) })
   })
 }
 

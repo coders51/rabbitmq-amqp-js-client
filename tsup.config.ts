@@ -5,7 +5,7 @@ export default defineConfig({
   splitting: false,
   sourcemap: true,
   clean: true,
-  format: ["cjs", "esm"],
+  format: ["cjs", "esm", "iife"],
   outExtension(ctx) {
     return {
       dts: ".d.ts",
