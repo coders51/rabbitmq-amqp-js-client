@@ -5,7 +5,8 @@
   "main": "index.js",
   "scripts": {
     "start": "node index.js",
-    "rebuild-source": "cd .. && npm run build && cd - && npm install --force"
+    "rebuild-source": "cd .. && npm run build && cd - && npm install --force",
+    "websocket-example": "node websocket_example.js"
   },
   "author": "",
   "license": "ISC",

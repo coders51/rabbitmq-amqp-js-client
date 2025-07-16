@@ -1,4 +1,10 @@
-import { ConnectionEvents, ConnectionOptions, create_container, Connection as RheaConnection } from "rhea"
+import {
+  ConnectionEvents,
+  ConnectionOptions,
+  create_container,
+  Connection as RheaConnection,
+  websocket_connect,
+} from "rhea"
 import { AmqpManagement, Management } from "./management.js"
 import { EnvironmentParams } from "./environment.js"
 import { AmqpPublisher, Publisher } from "./publisher.js"
@@ -98,9 +104,31 @@ export class AmqpConnection implements Connection {
 }
 
 function buildConnectParams(envParams: EnvironmentParams, connParams?: ConnectionParams): ConnectionOptions {
+  const reconnectParams = buildReconnectParams(connParams)
+  if (envParams.webSocket) {
+    const ws = websocket_connect(envParams.webSocket)
+    const connectionDetails = ws(
+      `ws://${envParams.username}:${envParams.password}@${envParams.host}:${envParams.port}`,
+      "amqp",
+      {}
+    )
+    return {
+      connection_details: () => {
+        return {
+          ...connectionDetails(),
+          host: envParams.host,
+          port: envParams.port,
+        }
+      },
+      host: envParams.host,
+      port: envParams.port,
+      transport: "tcp",
+    }
+  }
+
   return {
     ...envParams,
-    ...buildReconnectParams(connParams),
+    ...reconnectParams,
   }
 }
 

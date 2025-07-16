@@ -36,7 +36,12 @@ export async function openWebSocketConnection(container: Container, url: string)
     container.once(ConnectionEvents.error, (context) => {
       return rej(context.connection.error)
     })
-    container.connect({ connection_details: ws(url, ["amqp"], {}) })
+    container.connect({
+      connection_details: () => ({ ...ws(url, ["amqp"], {}), host: "localhost", port: 5672 }),
+      transport: "tcp",
+      host: "localhost",
+      port: 5672,
+    })
   })
 }
 

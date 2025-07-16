@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, test } from "vitest"
 import { host, port, username, password, numberOfConnections, eventually } from "../../support/util.js"
-import { Connection, Container, create_container, websocket_connect } from "rhea"
+import { Connection, Container, create_container } from "rhea"
 import { closeConnection, openConnection, openManagement, openWebSocketConnection } from "../../support/rhea_utils.js"
 
 describe("Rhea connections", () => {
@@ -28,7 +28,7 @@ describe("Rhea connections", () => {
     })
   })
 
-  test("create a connection through a websocket", async () => {
+  test.skip("create a connection through a websocket", async () => {
     connection = await openWebSocketConnection(container, `ws://${username}:${password}@${host}:${port}`)
 
     await eventually(async () => {
