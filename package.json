@@ -61,6 +61,6 @@
     "vitest": "^3.2.1"
   },
   "dependencies": {
-    "rhea": "^3.0.4"
+    "rhea": "github:amqp/rhea"
   }
 }

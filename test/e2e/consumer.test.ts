@@ -228,7 +228,7 @@ describe("Consumer", () => {
     })
   })
 
-  test.skip("consumer can discard a message with annotations in a queue", async () => {
+  test("consumer can discard a message with annotations in a queue", async () => {
     const publisher = await connection.createPublisher({ queue: { name: discardQueueName } })
     const expectedBody = "ciao"
     await publisher.publish(
@@ -240,7 +240,7 @@ describe("Consumer", () => {
     const consumer = await connection.createConsumer({
       queue: { name: discardQueueName },
       messageHandler: (context) => {
-        context.discard()
+        context.discard({ "x-opt-annotation-key": "annotation-value" })
       },
     })
     consumer.start()
@@ -296,7 +296,7 @@ describe("Consumer", () => {
     })
   })
 
-  test.skip("consumer can requeue a message with annotations in a queue", async () => {
+  test("consumer can requeue a message with annotations in a queue", async () => {
     let toRequeue = true
     const messages: Message[] = []
     const consumer = await connection.createConsumer({
@@ -305,7 +305,7 @@ describe("Consumer", () => {
         messages.push(message)
         if (toRequeue) {
           toRequeue = false
-          context.requeue()
+          context.requeue({ "x-opt-annotation-key": "annotation-value" })
           return
         }
         context.accept()
@@ -327,7 +327,7 @@ describe("Consumer", () => {
       expect(messages[0].message_annotations!["x-opt-annotation-key"]).toBeUndefined()
       expect(messages[0].message_annotations!["x-delivery-count"]).toBeUndefined()
       expect(messages[1].message_annotations!["x-opt-annotation-key"]).toEqual("annotation-value")
-      expect(messages[1].message_annotations!["x-delivery-count"]).toEqual("1")
+      expect(messages[1].message_annotations!["x-delivery-count"]).toEqual(1)
     })
-  })
+  }, 15000)
 })
