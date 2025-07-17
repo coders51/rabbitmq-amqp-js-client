@@ -10,7 +10,6 @@ import {
   SenderEvents,
   SenderOptions,
 } from "rhea"
-import { WebSocket } from "ws"
 
 export const testExchangeName = "test-exchange"
 export const testQueueName = "test-queue"
