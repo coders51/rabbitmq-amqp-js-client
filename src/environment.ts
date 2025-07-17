@@ -1,3 +1,4 @@
+import { WebSocketImpl } from "rhea"
 import { AmqpConnection, Connection, ConnectionParams } from "./connection.js"
 
 export interface Environment {
@@ -10,6 +11,7 @@ export type EnvironmentParams = {
   port: number
   username: string
   password: string
+  webSocket?: WebSocketImpl
 }
 
 export class AmqpEnvironment implements Environment {
