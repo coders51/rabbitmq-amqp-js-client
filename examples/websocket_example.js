@@ -1,10 +1,10 @@
 const rabbit = require("rabbitmq-amqp-js-client")
 const { randomUUID } = require("crypto")
 
-const rabbitUser = process.env.RABBITMQ_USER ?? "rabbit"
-const rabbitPassword = process.env.RABBITMQ_PASSWORD ?? "rabbit"
+const rabbitUser = process.env.RABBITMQ_USER ?? "guest"
+const rabbitPassword = process.env.RABBITMQ_PASSWORD ?? "guest"
 const rabbitHost = process.env.RABBITMQ_HOSTNAME ?? "localhost"
-const rabbitPort = process.env.RABBITMQ_PORT ?? 5672
+const rabbitPort = process.env.RABBITMQ_PORT ?? 15678
 
 async function main() {
   const testExchange = `test-exchange-${randomUUID()}`
