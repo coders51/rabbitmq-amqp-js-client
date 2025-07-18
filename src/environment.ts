@@ -12,6 +12,7 @@ export type EnvironmentParams = {
   username: string
   password: string
   webSocket?: WebSocketImpl
+  webSocketUrl?: string
 }
 
 export class AmqpEnvironment implements Environment {

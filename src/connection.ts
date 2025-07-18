@@ -107,11 +107,9 @@ function buildConnectParams(envParams: EnvironmentParams, connParams?: Connectio
   const reconnectParams = buildReconnectParams(connParams)
   if (envParams.webSocket) {
     const ws = websocket_connect(envParams.webSocket)
-    const connectionDetails = ws(
-      `ws://${envParams.username}:${envParams.password}@${envParams.host}:${envParams.port}`,
-      "amqp",
-      {}
-    )
+    const wsUrl = envParams.webSocketUrl ?? `ws://${envParams.host}:${envParams.port}/ws`
+    const connectionDetails = ws(wsUrl, "amqp", {})
+
     return {
       connection_details: () => {
         return {
@@ -120,9 +118,8 @@ function buildConnectParams(envParams: EnvironmentParams, connParams?: Connectio
           port: envParams.port,
         }
       },
-      host: envParams.host,
-      port: envParams.port,
-      transport: "tcp",
+      ...envParams,
+      ...reconnectParams,
     }
   }
 
