@@ -12,7 +12,7 @@ import {
   testExchangeName,
   testQueueName,
 } from "../../support/rhea_utils.js"
-import { randomUUID } from "crypto"
+import { v4 as uuid } from "uuid"
 
 describe("Creating a publisher through rhea", () => {
   let container: Container
@@ -73,7 +73,7 @@ describe("Creating a publisher through rhea", () => {
         test = true
       })
 
-      publisher.send({ message_id: randomUUID(), body: "Hello world!" })
+      publisher.send({ message_id: uuid(), body: "Hello world!" })
 
       await eventually(async () => {
         expect(test).eql(true)
@@ -116,7 +116,7 @@ describe("Creating a publisher through rhea", () => {
         test = true
       })
 
-      publisher.send({ message_id: randomUUID(), body: "Hello world!" })
+      publisher.send({ message_id: uuid(), body: "Hello world!" })
 
       await eventually(async () => {
         expect(test).eql(true)
@@ -159,7 +159,7 @@ describe("Creating a publisher through rhea", () => {
         test = true
       })
 
-      publisher.send({ message_id: randomUUID(), body: "Hello world!", to: `/queues/${testQueueName}` })
+      publisher.send({ message_id: uuid(), body: "Hello world!", to: `/queues/${testQueueName}` })
 
       await eventually(async () => {
         expect(test).eql(true)

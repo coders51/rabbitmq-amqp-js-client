@@ -3,56 +3,57 @@
   <head>
     <title>AMQP websockets example</title>
     <meta http-equiv="content-type" content="text/html;charset=utf-8" />
-    <script src="../browser/index.cjs"></script>
+    <script src="../dist/umd/index.js"></script>
   </head>
 
   <body>
     <input type="text" id="request" style="width: 100%" />
-    <script>
-        const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
-              const testExchange = `test-exchange-${randomUUID()}`
-                const testQueue = `test-queue-${randomUUID()}`
-                const routingKey = `test-key-${randomUUID()}`
-              console.log("Creating the environment through a websocket...")
-              const environment = rabbit.createEnvironment({
-                  host: "localhost",
-                  port: 5672,
-                  username: "rabbit",
-                  password: "rabbit"
-              })
+    <script type="module">
+      const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
+      const testExchange = `test-exchange-browser-example`
+      const testQueue = `test-queue-browser-example`
+      const routingKey = `test-key-browser-example`
+      console.log("Creating the environment through a websocket...")
+      const environment = RabbitmqClient.createEnvironment({
+        host: "localhost",
+        port: 5672,
+        username: "rabbit",
+        password: "rabbit",
+        webSocket: WebSocket,
+      })
 
-              console.log("Opening a connection...")
-              const connection = await environment.createConnection()
-              const management = connection.management()
+      console.log("Opening a connection...")
+      const connection = await environment.createConnection()
+      const management = connection.management()
 
-              console.log("Creating a queue and an exchange...")
-          const queue = await management.declareQueue(testQueue)
-          const exchange = await management.declareExchange(testExchange)
+      console.log("Creating a queue and an exchange...")
+      const queue = await management.declareQueue(testQueue)
+      const exchange = await management.declareExchange(testExchange)
 
-          console.log("Binding exchange to queue...")
-          await management.bind(routingKey, { source: exchange, destination: queue })
+      console.log("Binding exchange to queue...")
+      await management.bind(routingKey, { source: exchange, destination: queue })
 
-          console.log("Opening a publisher and publishing 10 messages...")
-          const publisher = await connection.createPublisher({ exchange: { name: testExchange, routingKey: routingKey } })
-          for (const i of Array(10).keys()) {
-            const publishResult = await publisher.publish(rabbit.createAmqpMessage({ body: `Hello - ${i} - ` }))
-            switch (publishResult.outcome) {
-              case rabbit.OutcomeState.ACCEPTED:
-                console.log("Message Accepted")
-                break
-              case rabbit.OutcomeState.RELEASED:
-                console.log("Message Released")
-                break
-              case rabbit.OutcomeState.REJECTED:
-                console.log("Message Rejected")
-                break
-              default:
-                break
-            }
-          }
-          publisher.close()
+      console.log("Opening a publisher and publishing 10 messages...")
+      const publisher = await connection.createPublisher({ exchange: { name: testExchange, routingKey: routingKey } })
+      for (const i of Array(10).keys()) {
+        const publishResult = await publisher.publish(rabbit.createAmqpMessage({ body: `Hello - ${i} - ` }))
+        switch (publishResult.outcome) {
+          case rabbit.OutcomeState.ACCEPTED:
+            console.log("Message Accepted")
+            break
+          case rabbit.OutcomeState.RELEASED:
+            console.log("Message Released")
+            break
+          case rabbit.OutcomeState.REJECTED:
+            console.log("Message Rejected")
+            break
+          default:
+            break
+        }
+      }
+      publisher.close()
 
-          console.log("Opening a consumer and consuming messages...")
+      console.log("Opening a consumer and consuming messages...")
       const consumer = await connection.createConsumer({
         queue: { name: testQueue },
         messageHandler: (context, msg) => {

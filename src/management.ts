@@ -21,7 +21,7 @@ import {
   GetQueueInfoResponseDecoder,
 } from "./response_decoder.js"
 import { AmqpBinding, Binding, BindingInfo, BindingOptions } from "./binding.js"
-import { randomUUID } from "crypto"
+import { v4 as uuid } from "uuid"
 import { openLink } from "./utils.js"
 
 const MANAGEMENT_NODE_CONFIGURATION: SenderOptions | ReceiverOptions = {
@@ -229,7 +229,7 @@ export class AmqpManagement implements Management {
 
   async bind(key: string, options: BindingOptions): Promise<Binding> {
     const bindingInfo: BindingInfo = {
-      id: randomUUID(),
+      id: uuid(),
       source: options.source.getInfo.name,
       destination: options.destination.getInfo.name,
       arguments: options.arguments ?? {},
