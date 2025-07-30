@@ -1,10 +1,10 @@
-const rabbit = require("rabbitmq-amqp-js-client")
-const { randomUUID } = require("crypto")
+import { createEnvironment, createAmqpMessage, OutcomeState } from "rabbitmq-amqp-js-client"
+import { randomUUID } from "crypto"
 
-const rabbitUser = process.env.RABBITMQ_USER ?? "guest"
-const rabbitPassword = process.env.RABBITMQ_PASSWORD ?? "guest"
+const rabbitUser = process.env.RABBITMQ_USER ?? "rabbit"
+const rabbitPassword = process.env.RABBITMQ_PASSWORD ?? "rabbit"
 const rabbitHost = process.env.RABBITMQ_HOSTNAME ?? "localhost"
-const rabbitPort = process.env.RABBITMQ_PORT ?? 15678
+const rabbitPort = process.env.RABBITMQ_PORT ?? 3000
 
 async function main() {
   const testExchange = `test-exchange-${randomUUID()}`
@@ -12,7 +12,7 @@ async function main() {
   const routingKey = `test-key-${randomUUID()}`
 
   console.log("Creating the environment...")
-  const environment = rabbit.createEnvironment({
+  const environment = createEnvironment({
     host: rabbitHost,
     port: rabbitPort,
     username: rabbitUser,
@@ -34,15 +34,15 @@ async function main() {
   console.log("Opening a publisher and publishing 10 messages...")
   const publisher = await connection.createPublisher({ exchange: { name: testExchange, routingKey: routingKey } })
   for (const i of Array(10).keys()) {
-    const publishResult = await publisher.publish(rabbit.createAmqpMessage({ body: `Hello - ${i} - ` }))
+    const publishResult = await publisher.publish(createAmqpMessage({ body: `Hello - ${i} - ` }))
     switch (publishResult.outcome) {
-      case rabbit.OutcomeState.ACCEPTED:
+      case OutcomeState.ACCEPTED:
         console.log("Message Accepted")
         break
-      case rabbit.OutcomeState.RELEASED:
+      case OutcomeState.RELEASED:
         console.log("Message Released")
         break
-      case rabbit.OutcomeState.REJECTED:
+      case OutcomeState.REJECTED:
         console.log("Message Rejected")
         break
       default:
