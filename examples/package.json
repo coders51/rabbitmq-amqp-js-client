@@ -12,7 +12,8 @@
   "license": "ISC",
   "dependencies": {
     "rabbitmq-amqp-js-client": "file:../.",
-    "rhea": "^3.0.4"
+    "rhea": "^3.0.4",
+    "uuid": "^11.1.0"
   },
   "engines": {
     "node": "22.x.x"
