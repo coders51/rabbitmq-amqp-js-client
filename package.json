@@ -27,7 +27,7 @@
   },
   "scripts": {
     "test": "vitest run",
-    "build": "rollup --config rollup.config.js",
+    "build": "tsc --project tsconfig.build.json && rollup --config rollup.config.js",
     "check": "npm run check-ts && npm run check-lint && npm run check-format && npm run check-spell",
     "check-ts": "tsc --noEmit",
     "check-lint": "tsc --noEmit && eslint 'src/**/*.ts' 'test/**/*.ts'",

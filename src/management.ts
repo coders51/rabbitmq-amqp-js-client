@@ -47,6 +47,7 @@ export interface Management {
 export class AmqpManagement implements Management {
   static async create(connection: RheaConnection): Promise<AmqpManagement> {
     const senderLink = await AmqpManagement.openSender(connection)
+    // await sendable(senderLink)
     const receiverLink = await AmqpManagement.openReceiver(connection)
     return new AmqpManagement(connection, senderLink, receiverLink)
   }
@@ -113,7 +114,8 @@ export class AmqpManagement implements Management {
         .setAmqpMethod(AmqpMethods.PUT)
         .setBody(buildDeclareQueueBody(options))
         .build()
-      this.senderLink.send(message)
+
+      this.senderLink.once("sendable", () => this.senderLink.send(message))
     })
   }
 
@@ -356,3 +358,9 @@ function buildBindingDestinationFrom(destination: Exchange | Queue) {
 
   return { destination_queue: destination.getInfo.name }
 }
+
+const sendable = async (senderLink: Sender) =>
+  new Promise((res) => {
+    console.log("Checking sendable")
+    if (!senderLink.sendable()) senderLink.once(SenderEvents.sendable, () => res(true))
+  })

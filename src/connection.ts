@@ -4,12 +4,21 @@ import {
   create_container,
   Connection as RheaConnection,
   websocket_connect,
+  WebSocketImpl,
 } from "rhea"
 import { AmqpManagement, Management } from "./management.js"
-import { EnvironmentParams } from "./environment.js"
 import { AmqpPublisher, Publisher } from "./publisher.js"
 import { DestinationOptions } from "./message.js"
 import { AmqpConsumer, Consumer, CreateConsumerParams } from "./consumer.js"
+
+export type EnvironmentParams = {
+  host: string
+  port: number
+  username: string
+  password: string
+  webSocket?: WebSocketImpl
+  webSocketUrl?: string
+}
 
 export interface Connection {
   close(): Promise<boolean>

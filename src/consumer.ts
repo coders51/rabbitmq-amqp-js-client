@@ -17,9 +17,10 @@ import {
   STREAM_FILTER_SPEC,
   STREAM_OFFSET_SPEC,
 } from "./utils.js"
-import { createConsumerAddressFrom } from "./message.js"
 import { QueueOptions } from "./message.js"
 import { AmqpDeliveryContext, DeliveryContext } from "./delivery_context.js"
+import { AmqpEndpoints } from "./link_message_builder.js"
+import { inspect } from "util"
 
 export type ConsumerMessageHandler = (context: DeliveryContext, message: Message) => void
 
@@ -137,4 +138,11 @@ function createConsumerFilterFrom(params: CreateConsumerParams): SourceFilter | 
   }
 
   return filters
+}
+
+export function createConsumerAddressFrom(params: CreateConsumerParams): string | undefined {
+  if ("queue" in params) return `/${AmqpEndpoints.Queues}/${params.queue.name}`
+  if ("stream" in params) return `/${AmqpEndpoints.Queues}/${params.stream.name}`
+
+  throw new Error(`Unknown publisher options -- ${inspect(params)}`)
 }

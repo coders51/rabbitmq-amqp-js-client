@@ -1,14 +1,11 @@
 {
-  "extends": "@tsconfig/node22/tsconfig.json",
   "compilerOptions": {
-    "preserveConstEnums": true,
-    "noImplicitReturns": true,
-    "noFallthroughCasesInSwitch": true,
-    "noImplicitThis": true,
-    "strictNullChecks": true,
-    "noUnusedLocals": true,
-    "noUnusedParameters": true,
+    "module": "node18",
+    "target": "es2020",
+    "strict": true,
+    "declaration": true,
     "sourceMap": true,
+    "declarationMap": true,
     "outDir": "dist"
   },
   "include": ["src/**/*"],
