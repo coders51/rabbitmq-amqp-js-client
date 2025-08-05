@@ -8,6 +8,7 @@ export enum AmqpMethods {
 }
 
 export enum AmqpEndpoints {
+  AuthTokens = "auth/tokens",
   Queues = "queues",
   Exchanges = "exchanges",
   Bindings = "bindings",

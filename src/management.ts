@@ -19,6 +19,7 @@ import {
   DeleteExchangeResponseDecoder,
   DeleteQueueResponseDecoder,
   GetQueueInfoResponseDecoder,
+  RefreshTokensResponseDecoder,
 } from "./response_decoder.js"
 import { AmqpBinding, Binding, BindingInfo, BindingOptions } from "./binding.js"
 import { randomUUID } from "crypto"
@@ -34,6 +35,7 @@ const MANAGEMENT_NODE_CONFIGURATION: SenderOptions | ReceiverOptions = {
 }
 
 export interface Management {
+  refreshToken(token: string): Promise<boolean>
   declareQueue: (queueName: string, options?: Partial<QueueOptions>) => Promise<Queue>
   deleteQueue: (queueName: string) => Promise<boolean>
   getQueueInfo: (queueName: string) => Promise<Queue>
@@ -90,6 +92,31 @@ export class AmqpManagement implements Management {
 
   private closeReceiver(): void {
     this.senderLink.close()
+  }
+
+  async refreshToken(token: string): Promise<boolean> {
+    return new Promise((res, rej) => {
+      this.receiverLink.once(ReceiverEvents.message, (context: EventContext) => {
+        if (!context.message) {
+          return rej(new Error("Receiver has not received any message"))
+        }
+
+        const response = new RefreshTokensResponseDecoder().decodeFrom(context.message, String(message.message_id))
+        if (response.status === "error") {
+          return rej(response.error)
+        }
+
+        return res(true)
+      })
+
+      const message = new LinkMessageBuilder()
+        .sendTo(`/${AmqpEndpoints.AuthTokens}`)
+        .setReplyTo(ME)
+        .setAmqpMethod(AmqpMethods.PUT)
+        .setBody(Buffer.from(token, "ascii"))
+        .build()
+      this.senderLink.send(message)
+    })
   }
 
   async declareQueue(queueName: string, options: Partial<QueueOptions> = {}): Promise<Queue> {
