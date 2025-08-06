@@ -7,7 +7,6 @@ import {
   ReceiverOptions,
   Connection as RheaConnection,
   Sender,
-  SenderEvents,
   SenderOptions,
 } from "rhea"
 import { AmqpEndpoints, AmqpMethods, LinkMessageBuilder, ME } from "./link_message_builder.js"
@@ -23,9 +22,9 @@ import {
 } from "./response_decoder.js"
 import { AmqpBinding, Binding, BindingInfo, BindingOptions } from "./binding.js"
 import { randomUUID } from "crypto"
-import { openLink } from "./utils.js"
+import { openReceiver, openSender } from "./rhea_wrapper.js"
 
-const MANAGEMENT_NODE_CONFIGURATION: SenderOptions | ReceiverOptions = {
+export const MANAGEMENT_NODE_CONFIGURATION: SenderOptions | ReceiverOptions = {
   snd_settle_mode: 1,
   rcv_settle_mode: 0,
   name: "management-link-pair",
@@ -43,13 +42,14 @@ export interface Management {
   deleteExchange: (exchangeName: string) => Promise<boolean>
   bind: (key: string, options: BindingOptions) => Promise<Binding>
   unbind: (key: string, options: BindingOptions) => Promise<boolean>
+  refreshToken: (token: string) => Promise<boolean>
   close: () => void
 }
 
 export class AmqpManagement implements Management {
   static async create(connection: RheaConnection): Promise<AmqpManagement> {
-    const senderLink = await AmqpManagement.openSender(connection)
-    const receiverLink = await AmqpManagement.openReceiver(connection)
+    const senderLink = await openSender(connection)
+    const receiverLink = await openReceiver(connection)
     return new AmqpManagement(connection, senderLink, receiverLink)
   }
 
@@ -58,26 +58,6 @@ export class AmqpManagement implements Management {
     private senderLink: Sender,
     private receiverLink: Receiver
   ) {}
-
-  private static async openReceiver(connection: RheaConnection): Promise<Receiver> {
-    return openLink<Receiver>(
-      connection,
-      ReceiverEvents.receiverOpen,
-      ReceiverEvents.receiverError,
-      connection.open_receiver.bind(connection),
-      MANAGEMENT_NODE_CONFIGURATION
-    )
-  }
-
-  private static async openSender(connection: RheaConnection): Promise<Sender> {
-    return openLink<Sender>(
-      connection,
-      SenderEvents.senderOpen,
-      SenderEvents.senderError,
-      connection.open_sender.bind(connection),
-      MANAGEMENT_NODE_CONFIGURATION
-    )
-  }
 
   close(): void {
     if (this.connection.is_closed()) return
@@ -92,31 +72,6 @@ export class AmqpManagement implements Management {
 
   private closeReceiver(): void {
     this.senderLink.close()
-  }
-
-  async refreshToken(token: string): Promise<boolean> {
-    return new Promise((res, rej) => {
-      this.receiverLink.once(ReceiverEvents.message, (context: EventContext) => {
-        if (!context.message) {
-          return rej(new Error("Receiver has not received any message"))
-        }
-
-        const response = new RefreshTokensResponseDecoder().decodeFrom(context.message, String(message.message_id))
-        if (response.status === "error") {
-          return rej(response.error)
-        }
-
-        return res(true)
-      })
-
-      const message = new LinkMessageBuilder()
-        .sendTo(`/${AmqpEndpoints.AuthTokens}`)
-        .setReplyTo(ME)
-        .setAmqpMethod(AmqpMethods.PUT)
-        .setBody(Buffer.from(token, "ascii"))
-        .build()
-      this.senderLink.send(message)
-    })
   }
 
   async declareQueue(queueName: string, options: Partial<QueueOptions> = {}): Promise<Queue> {
@@ -311,6 +266,31 @@ export class AmqpManagement implements Management {
         )
         .setReplyTo(ME)
         .setAmqpMethod(AmqpMethods.DELETE)
+        .build()
+      this.senderLink.send(message)
+    })
+  }
+
+  async refreshToken(token: string): Promise<boolean> {
+    return new Promise((res, rej) => {
+      this.receiverLink.once(ReceiverEvents.message, (context: EventContext) => {
+        if (!context.message) {
+          return rej(new Error("Receiver has not received any message"))
+        }
+
+        const response = new RefreshTokensResponseDecoder().decodeFrom(context.message, String(message.message_id))
+        if (response.status === "error") {
+          return rej(response.error)
+        }
+
+        return res(true)
+      })
+
+      const message = new LinkMessageBuilder()
+        .sendTo(`/${AmqpEndpoints.AuthTokens}`)
+        .setReplyTo(ME)
+        .setAmqpMethod(AmqpMethods.PUT)
+        .setBody(Buffer.from(token, "ascii"))
         .build()
       this.senderLink.send(message)
     })
