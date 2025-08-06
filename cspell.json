@@ -7,6 +7,7 @@
     "dste",
     "dstq",
     "fanout",
+    "keyid",
     "perftest",
     "prefetch",
     "RABBITMQ",

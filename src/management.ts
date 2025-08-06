@@ -34,7 +34,6 @@ export const MANAGEMENT_NODE_CONFIGURATION: SenderOptions | ReceiverOptions = {
 }
 
 export interface Management {
-  refreshToken(token: string): Promise<boolean>
   declareQueue: (queueName: string, options?: Partial<QueueOptions>) => Promise<Queue>
   deleteQueue: (queueName: string) => Promise<boolean>
   getQueueInfo: (queueName: string) => Promise<Queue>

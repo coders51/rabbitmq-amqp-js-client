@@ -6,27 +6,23 @@ export interface Environment {
   close(): Promise<void>
 }
 
-type EnvironmentParamsWithPassword = {
+type WebSocketParams = {
+  implementation: WebSocketImpl
+  url?: string
+}
+
+type OauthParams = {
+  token: string
+}
+
+export type EnvironmentParams = {
   host: string
   port: number
   username: string
   password: string
-  token?: never
-  webSocket?: WebSocketImpl
-  webSocketUrl?: string
+  webSocket?: WebSocketParams
+  oauth?: OauthParams
 }
-
-type EnvironmentParamsWithToken = {
-  host: string
-  port: number
-  username: string
-  token: string
-  password?: never
-  webSocket?: WebSocketImpl
-  webSocketUrl?: string
-}
-
-export type EnvironmentParams = EnvironmentParamsWithPassword | EnvironmentParamsWithToken
 
 export class AmqpEnvironment implements Environment {
   constructor(

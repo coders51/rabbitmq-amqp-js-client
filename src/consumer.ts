@@ -11,12 +11,12 @@ import {
 } from "rhea"
 import {
   Offset,
-  openLink,
   SourceFilter,
   STREAM_FILTER_MATCH_UNFILTERED,
   STREAM_FILTER_SPEC,
   STREAM_OFFSET_SPEC,
 } from "./utils.js"
+import { openLink } from "./rhea_wrapper.js"
 import { createConsumerAddressFrom } from "./message.js"
 import { QueueOptions } from "./message.js"
 import { AmqpDeliveryContext, DeliveryContext } from "./delivery_context.js"

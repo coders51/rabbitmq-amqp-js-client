@@ -1,5 +1,6 @@
 import { Connection, Delivery, EventContext, Message, ReceiverOptions, Sender, SenderEvents, SenderOptions } from "rhea"
-import { openLink, OutcomeState } from "./utils.js"
+import { OutcomeState } from "./utils.js"
+import { openLink } from "./rhea_wrapper.js"
 import { randomUUID } from "crypto"
 import { inspect } from "util"
 import { createPublisherAddressFrom, DestinationOptions } from "./message.js"

@@ -9,6 +9,7 @@ import {
   numberOfConnections,
   wait,
   closeAllConnections,
+  password,
 } from "../support/util.js"
 import { Connection } from "../../src/connection.js"
 
@@ -18,7 +19,7 @@ describe("Oauth2 Connection", () => {
 
   test("creating an oauth2 connection", async () => {
     const token = generateToken(username, 10)
-    environment = createEnvironment({ host, port, username, token })
+    environment = createEnvironment({ host, port, username, password, oauth: { token } })
 
     connection = await environment.createConnection()
 
@@ -31,7 +32,7 @@ describe("Oauth2 Connection", () => {
 
   test("refreshing the token of an oauth2 connection", async () => {
     const token = generateToken(username, 10)
-    environment = createEnvironment({ host, port, username, token })
+    environment = createEnvironment({ host, port, username, password, oauth: { token } })
 
     connection = await environment.createConnection()
     await wait(3000)
@@ -46,7 +47,7 @@ describe("Oauth2 Connection", () => {
 
   test("reconnect with new token of an oauth2 connection", async () => {
     const token = generateToken(username, 100)
-    environment = createEnvironment({ host, port, username, token })
+    environment = createEnvironment({ host, port, username, password, oauth: { token } })
     connection = await environment.createConnection()
     await connection.refreshToken(generateToken(username, 100))
 

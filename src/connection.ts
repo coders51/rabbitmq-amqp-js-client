@@ -26,7 +26,7 @@ export type ConnectionParams =
       reconnectLimit?: number
     }
 
-class PasswordSettings {
+class PasswordBridge {
   private func: (() => string) | null = null
 
   register(func: () => string) {
@@ -43,31 +43,32 @@ export class AmqpConnection implements Connection {
   private _consumers: Map<string, Consumer> = new Map<string, Consumer>()
 
   static async create(envParams: EnvironmentParams, connParams?: ConnectionParams) {
-    const settings = new PasswordSettings()
+    const bridge = new PasswordBridge()
 
-    if (envParams.token) {
-      const rheaOauthConnection = await openRheaConnection(envParams, connParams, () => settings.getPassword())
-      const topologyManagement = await AmqpManagement.create(rheaOauthConnection)
-      console.log("TOKEN", envParams.token)
-      return new AmqpConnection(rheaOauthConnection, topologyManagement, settings, envParams.token)
-    }
-
-    const rheaPlainConnection = await openRheaConnection(envParams, connParams)
-    const topologyManagement = await AmqpManagement.create(rheaPlainConnection)
-    return new AmqpConnection(rheaPlainConnection, topologyManagement, settings, envParams.password!)
+    const rheaConnection = await openRheaConnection(
+      envParams,
+      connParams,
+      envParams.oauth ? () => bridge.getPassword() : undefined
+    )
+    const topologyManagement = await AmqpManagement.create(rheaConnection)
+    return new AmqpConnection(
+      rheaConnection,
+      topologyManagement,
+      envParams.oauth ? envParams.oauth.token : envParams.password,
+      bridge
+    )
   }
 
   constructor(
     private readonly connection: RheaConnection,
     private readonly topologyManagement: Management,
-    private readonly settings: PasswordSettings,
-    private password: string
+    private password: string,
+    bridge: PasswordBridge
   ) {
-    settings.register(() => this.getPassword())
+    bridge.register(() => this.getPassword())
   }
 
   private getPassword() {
-    console.log("CALLED")
     return this.password
   }
 

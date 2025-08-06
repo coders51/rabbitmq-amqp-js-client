@@ -1,16 +1,18 @@
 import {
+  Connection,
   ConnectionEvents,
   ConnectionOptions,
   create_container,
   Receiver,
   ReceiverEvents,
+  ReceiverOptions,
   Connection as RheaConnection,
   Sender,
   SenderEvents,
+  SenderOptions,
   websocket_connect,
 } from "rhea"
 import { MANAGEMENT_NODE_CONFIGURATION } from "./management.js"
-import { openLink } from "./utils.js"
 import { ConnectionParams } from "./connection.js"
 import { EnvironmentParams } from "./environment.js"
 
@@ -59,8 +61,8 @@ function buildConnectParams(
 ): ConnectionOptions {
   const reconnectParams = buildReconnectParams(connParams)
   if (envParams.webSocket) {
-    const ws = websocket_connect(envParams.webSocket)
-    const wsUrl = envParams.webSocketUrl ?? `ws://${envParams.host}:${envParams.port}/ws`
+    const ws = websocket_connect(envParams.webSocket.implementation)
+    const wsUrl = envParams.webSocket.url ?? `ws://${envParams.host}:${envParams.port}/ws`
     const connectionDetails = ws(wsUrl, "amqp", {})
 
     return {
@@ -76,7 +78,7 @@ function buildConnectParams(
     }
   }
 
-  if (envParams.token) {
+  if (envParams.oauth) {
     return {
       connection_details: () => {
         return {
@@ -90,7 +92,7 @@ function buildConnectParams(
       host: envParams.host,
       port: envParams.port,
       username: envParams.username,
-      password: envParams.token,
+      password: envParams.oauth.token,
       ...reconnectParams,
     }
   }
@@ -114,4 +116,28 @@ function buildReconnectParams(connParams?: ConnectionParams) {
   if (connParams && !connParams.reconnect) return { reconnect: false }
 
   return { reconnect: true }
+}
+
+export type LinkOpenEvents = SenderEvents.senderOpen | ReceiverEvents.receiverOpen
+export type LinkErrorEvents = SenderEvents.senderError | ReceiverEvents.receiverError
+export type OpenLinkMethods =
+  | ((options?: SenderOptions | string) => Sender)
+  | ((options?: ReceiverOptions | string) => Receiver)
+
+export async function openLink<T extends Sender | Receiver>(
+  connection: Connection,
+  successEvent: LinkOpenEvents,
+  errorEvent: LinkErrorEvents,
+  openMethod: OpenLinkMethods,
+  config?: SenderOptions | ReceiverOptions | string
+): Promise<T> {
+  return new Promise((res, rej) => {
+    connection.once(successEvent, (context) => {
+      return res(context.receiver || context.sender)
+    })
+    connection.once(errorEvent, (context) => {
+      return rej(context.connection.error)
+    })
+    openMethod(config)
+  })
 }

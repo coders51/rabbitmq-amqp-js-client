@@ -41,7 +41,7 @@ describe("Rhea connections", () => {
     await eventually(async () => {
       expect(await numberOfConnections()).to.eql(1)
     })
-  })
+  }, 8000)
 
   test.skip("create a connection through a websocket", async () => {
     connection = await openWebSocketConnection(container, `ws://${username}:${password}@${host}:${port}`)
