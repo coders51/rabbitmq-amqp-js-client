@@ -52,7 +52,7 @@ describe("Environment", () => {
     await eventually(async () => {
       expect(await numberOfConnections()).to.eql(1)
     })
-  }, 10000)
+  }, 7000)
 
   test("a connection reconnects by default", async () => {
     await environment.createConnection()
@@ -62,7 +62,7 @@ describe("Environment", () => {
     await eventually(async () => {
       expect(await numberOfConnections()).to.eql(1)
     })
-  }, 10000)
+  }, 7000)
 
   test("a connection with reconnect set to number retries after number ms", async () => {
     await environment.createConnection({ reconnect: 2000, initialReconnectDelay: 2000 })

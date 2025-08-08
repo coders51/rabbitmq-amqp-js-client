@@ -71,3 +71,5 @@ export class DeleteExchangeResponseDecoder extends EmptyBodyResponseDecoder {}
 export class CreateBindingResponseDecoder extends EmptyBodyResponseDecoder {}
 
 export class DeleteBindingResponseDecoder extends EmptyBodyResponseDecoder {}
+
+export class RefreshTokensResponseDecoder extends EmptyBodyResponseDecoder {}

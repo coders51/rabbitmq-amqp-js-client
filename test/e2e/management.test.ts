@@ -14,6 +14,7 @@ import {
   getExchangeInfo,
   existsBinding,
   cleanRabbit,
+  generateToken,
 } from "../support/util.js"
 import { createEnvironment, Environment } from "../../src/environment.js"
 import { Connection } from "../../src/connection.js"
@@ -48,6 +49,14 @@ describe("Management", () => {
     } catch (error) {
       console.error(error)
     }
+  })
+
+  test("refresh the token through the /auth/tokens endpoint", async () => {
+    const newToken = generateToken(username, 5)
+
+    const result = await management.refreshToken(newToken)
+
+    expect(result).to.eql(true)
   })
 
   describe("queues", async () => {

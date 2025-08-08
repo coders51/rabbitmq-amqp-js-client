@@ -2,6 +2,8 @@ import { inspect } from "util"
 import got, { Response } from "got"
 import { AssertionError } from "assertion-error"
 import { expect } from "vitest"
+import { createSecretKey } from "crypto"
+import * as jwt from "jsonwebtoken"
 
 export type ConnectionInfoResponse = {
   name: string
@@ -350,4 +352,35 @@ export async function eventually(fn: Function, timeout = 5000) {
       await wait(5)
     }
   }
+}
+
+const base64Key = "abcdefghijklmnopqrstuvwxyz0123456789ABCDEFGH"
+const audience = "rabbitmq"
+
+export function generateToken(username: string, duration: number) {
+  const bytes = Buffer.from(base64Key, "base64")
+  const claims = {
+    scope: "rabbitmq.configure:*/* rabbitmq.write:*/* rabbitmq.read:*/*",
+    random: randomString(6),
+  }
+
+  const key = createSecretKey(bytes)
+  const token = jwt.sign(claims, key, {
+    subject: username,
+    audience,
+    expiresIn: duration,
+    issuer: "unit_test",
+    keyid: "token-key",
+  })
+  return token
+}
+
+function randomString(length: number) {
+  const charSet = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+  let randomString = ""
+  for (let i = 0; i < length; i++) {
+    const randomPosition = Math.floor(Math.random() * charSet.length)
+    randomString += charSet.substring(randomPosition, randomPosition + 1)
+  }
+  return randomString
 }

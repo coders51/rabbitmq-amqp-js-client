@@ -1,15 +1,10 @@
-import {
-  ConnectionEvents,
-  ConnectionOptions,
-  create_container,
-  Connection as RheaConnection,
-  websocket_connect,
-} from "rhea"
+import { ConnectionEvents, Connection as RheaConnection } from "rhea"
 import { AmqpManagement, Management } from "./management.js"
 import { EnvironmentParams } from "./environment.js"
 import { AmqpPublisher, Publisher } from "./publisher.js"
 import { DestinationOptions } from "./message.js"
 import { AmqpConsumer, Consumer, CreateConsumerParams } from "./consumer.js"
+import { openRheaConnection } from "./rhea_wrapper.js"
 
 export interface Connection {
   close(): Promise<boolean>
@@ -19,6 +14,7 @@ export interface Connection {
   get publishers(): Map<string, Publisher>
   get consumers(): Map<string, Consumer>
   createConsumer(params: CreateConsumerParams): Promise<Consumer>
+  refreshToken: (token: string) => Promise<boolean>
 }
 
 export type ConnectionParams =
@@ -30,34 +26,51 @@ export type ConnectionParams =
       reconnectLimit?: number
     }
 
+class PasswordBridge {
+  private func: (() => string) | null = null
+
+  register(func: () => string) {
+    this.func = func
+  }
+
+  getPassword(): string {
+    return this.func ? this.func() : ""
+  }
+}
+
 export class AmqpConnection implements Connection {
   private _publishers: Map<string, Publisher> = new Map<string, Publisher>()
   private _consumers: Map<string, Consumer> = new Map<string, Consumer>()
 
   static async create(envParams: EnvironmentParams, connParams?: ConnectionParams) {
-    const connection = await AmqpConnection.open(envParams, connParams)
-    const topologyManagement = await AmqpManagement.create(connection)
-    return new AmqpConnection(connection, topologyManagement)
-  }
+    const bridge = new PasswordBridge()
 
-  private static async open(envParams: EnvironmentParams, connParams?: ConnectionParams): Promise<RheaConnection> {
-    return new Promise((res, rej) => {
-      const container = create_container()
-      container.once(ConnectionEvents.connectionOpen, (context) => {
-        return res(context.connection)
-      })
-      container.once(ConnectionEvents.error, (context) => {
-        return rej(context.error ?? new Error("Connection error occurred"))
-      })
-
-      container.connect(buildConnectParams(envParams, connParams))
-    })
+    const rheaConnection = await openRheaConnection(
+      envParams,
+      connParams,
+      envParams.oauth ? () => bridge.getPassword() : undefined
+    )
+    const topologyManagement = await AmqpManagement.create(rheaConnection)
+    return new AmqpConnection(
+      rheaConnection,
+      topologyManagement,
+      envParams.oauth ? envParams.oauth.token : envParams.password,
+      bridge
+    )
   }
 
   constructor(
     private readonly connection: RheaConnection,
-    private readonly topologyManagement: Management
-  ) {}
+    private readonly topologyManagement: Management,
+    private password: string,
+    bridge: PasswordBridge
+  ) {
+    bridge.register(() => this.getPassword())
+  }
+
+  private getPassword() {
+    return this.password
+  }
 
   async close(): Promise<boolean> {
     return new Promise((res, rej) => {
@@ -90,6 +103,15 @@ export class AmqpConnection implements Connection {
     return publisher
   }
 
+  async refreshToken(token: string): Promise<boolean> {
+    const ok = await this.topologyManagement.refreshToken(token)
+
+    if (!ok) return false
+
+    this.password = token
+    return true
+  }
+
   public get publishers(): Map<string, Publisher> {
     return this._publishers
   }
@@ -101,45 +123,4 @@ export class AmqpConnection implements Connection {
   public isOpen(): boolean {
     return this.connection ? this.connection.is_open() : false
   }
-}
-
-function buildConnectParams(envParams: EnvironmentParams, connParams?: ConnectionParams): ConnectionOptions {
-  const reconnectParams = buildReconnectParams(connParams)
-  if (envParams.webSocket) {
-    const ws = websocket_connect(envParams.webSocket)
-    const wsUrl = envParams.webSocketUrl ?? `ws://${envParams.host}:${envParams.port}/ws`
-    const connectionDetails = ws(wsUrl, "amqp", {})
-
-    return {
-      connection_details: () => {
-        return {
-          ...connectionDetails(),
-          host: envParams.host,
-          port: envParams.port,
-        }
-      },
-      ...envParams,
-      ...reconnectParams,
-    }
-  }
-
-  return {
-    ...envParams,
-    ...reconnectParams,
-  }
-}
-
-function buildReconnectParams(connParams?: ConnectionParams) {
-  if (connParams && connParams.reconnect) {
-    return {
-      reconnect: connParams.reconnect,
-      initial_reconnect_delay: connParams.initialReconnectDelay,
-      max_reconnect_delay: connParams.maxReconnectDelay,
-      reconnect_limit: connParams.reconnectLimit,
-    }
-  }
-
-  if (connParams && !connParams.reconnect) return { reconnect: false }
-
-  return { reconnect: true }
 }
