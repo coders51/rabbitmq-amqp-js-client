@@ -39,18 +39,18 @@ jobs:
         with:
           node-version: ${{ matrix.node-version }}
           cache: "npm"
-      # - name: Generate certificates
-      #   env:
-      #     CN: test-node
-      #   run: |
-      #     git clone https://github.com/rabbitmq/tls-gen tls-gen
-      #     cd tls-gen/basic
-      #     make
-      #     cd ../..
-      #     cp -a tls-gen/basic/result certs/
-      #     sudo chown -R 999:999 certs
-      #     sudo mv certs/server_test-node_certificate.pem certs/server_rabbitmq_certificate.pem
-      #     sudo mv certs/server_test-node_key.pem certs/server_rabbitmq_key.pem
+      - name: Generate certificates
+        env:
+          CN: test-node
+        run: |
+          git clone https://github.com/rabbitmq/tls-gen tls-gen
+          cd tls-gen/basic
+          make
+          cd ../..
+          cp -a tls-gen/basic/result certs/
+          sudo chown -R 999:999 certs
+          sudo mv certs/server_test-node_certificate.pem certs/server_rabbitmq_certificate.pem
+          sudo mv certs/server_test-node_key.pem certs/server_rabbitmq_key.pem
       - name: Restart RabbitMQ
         run: |
           docker restart test-node

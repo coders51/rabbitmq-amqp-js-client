@@ -12,3 +12,4 @@ services:
       RABBITMQ_DEFAULT_PASS: "rabbit"
     volumes:
       - ./conf/:/etc/rabbitmq/
+      - "./tls-gen/basic/result/:/certs"
