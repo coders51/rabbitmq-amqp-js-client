@@ -4,6 +4,8 @@
     "ackmode",
     "ampq",
     "amqpvalue",
+    "cacertfile",
+    "certfile",
     "dste",
     "dstq",
     "fanout",

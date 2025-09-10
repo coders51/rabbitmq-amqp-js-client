@@ -7,6 +7,7 @@ services:
     ports:
       - "15672:15672"
       - "5672:5672"
+      - "5671:5671"
     environment:
       RABBITMQ_DEFAULT_USER: "rabbit"
       RABBITMQ_DEFAULT_PASS: "rabbit"
