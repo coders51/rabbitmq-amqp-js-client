@@ -1,12 +1,6 @@
 import { describe, expect, test } from "vitest"
 import { createEnvironment, Environment } from "../../src/environment.js"
-import {
-  host,
-  username,
-  eventually,
-  numberOfConnections,
-  password,
-} from "../support/util.js"
+import { host, username, eventually, numberOfConnections, password } from "../support/util.js"
 import { Connection } from "../../src/connection.js"
 import { readFile } from "fs/promises"
 
@@ -15,11 +9,12 @@ describe("TLS Connection", () => {
   let connection: Connection
 
   test("creating a TLS connection", async () => {
+    const cn = process.env.CN ?? "rabbitmq"
     const tls = {
       ca: await readFile("./tls-gen/basic/result/ca_certificate.pem", "utf8"),
-      cert: await readFile(`./tls-gen/basic/result/client_rabbitmq_certificate.pem`, "utf8"),
-      key: await readFile(`./tls-gen/basic/result/client_rabbitmq_key.pem`, "utf8"),
-      rejectUnauthorized: true
+      cert: await readFile(`./tls-gen/basic/result/client_${cn}_certificate.pem`, "utf8"),
+      key: await readFile(`./tls-gen/basic/result/client_${cn}_key.pem`, "utf8"),
+      rejectUnauthorized: true,
     }
 
     environment = createEnvironment({ host, port: 5671, username, password, tls })

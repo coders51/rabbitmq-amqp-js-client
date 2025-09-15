@@ -27,12 +27,16 @@ jobs:
           RABBITMQ_DEFAULT_USER: "test-user"
           RABBITMQ_DEFAULT_PASS: "test-password"
         ports:
+          - 5671:5671
           - 5672:5672
           - 15672:15672
         volumes:
-          - ./conf/:/etc/rabbitmq/
+          - ${{ github.workspace }}/conf/:/etc/rabbitmq/
+          - ${{ github.workspace }}/certs/:/certs/
 
     steps:
+      - name: Add the rabbitmq service to /etc/hosts
+        run: sudo echo "127.0.0.1 test-node" | sudo tee -a /etc/hosts
       - uses: actions/checkout@v3
       - name: Use Node.js ${{ matrix.node-version }}
         uses: actions/setup-node@v3
@@ -65,6 +69,7 @@ jobs:
           docker exec test-node rabbitmqctl set_permissions 'O=client,CN=test-node' '.*' '.*' '.*'
       - run: npm test
         env:
+          CN: test-node
           RABBITMQ_USER: "test-user"
           RABBITMQ_PASSWORD: "test-password"
       # - run: cd example && npm install && npm start
