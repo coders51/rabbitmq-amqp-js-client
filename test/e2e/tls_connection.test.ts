@@ -6,7 +6,7 @@ import { readFile } from "fs/promises"
 
 describe("TLS Connection", () => {
   const LOCAL_TEST_CN = "rabbitmq"
-  
+
   let environment: Environment
   let connection: Connection
 
