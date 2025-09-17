@@ -15,6 +15,13 @@ type OauthParams = {
   token: string
 }
 
+type TlsParams = {
+  key?: string
+  cert?: string
+  ca?: string
+  rejectUnauthorized?: boolean
+}
+
 export type EnvironmentParams = {
   host: string
   port: number
@@ -22,6 +29,7 @@ export type EnvironmentParams = {
   password: string
   webSocket?: WebSocketParams
   oauth?: OauthParams
+  tls?: TlsParams
 }
 
 export class AmqpEnvironment implements Environment {

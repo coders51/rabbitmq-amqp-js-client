@@ -60,6 +60,7 @@ function buildConnectParams(
   getOauthPassword?: () => string
 ): ConnectionOptions {
   const reconnectParams = buildReconnectParams(connParams)
+  const tlsParams = buildTlsParams(envParams)
   if (envParams.webSocket) {
     const ws = websocket_connect(envParams.webSocket.implementation)
     const wsUrl = envParams.webSocket.url ?? `ws://${envParams.host}:${envParams.port}/ws`
@@ -75,6 +76,7 @@ function buildConnectParams(
       },
       ...envParams,
       ...reconnectParams,
+      ...tlsParams,
     }
   }
 
@@ -87,6 +89,7 @@ function buildConnectParams(
           username: envParams.username,
           password: getOauthPassword ? getOauthPassword() : undefined,
           ...reconnectParams,
+          ...tlsParams,
         }
       },
       host: envParams.host,
@@ -94,12 +97,14 @@ function buildConnectParams(
       username: envParams.username,
       password: envParams.oauth.token,
       ...reconnectParams,
+      ...tlsParams,
     }
   }
 
   return {
     ...envParams,
     ...reconnectParams,
+    ...tlsParams,
   }
 }
 
@@ -116,6 +121,17 @@ function buildReconnectParams(connParams?: ConnectionParams) {
   if (connParams && !connParams.reconnect) return { reconnect: false }
 
   return { reconnect: true }
+}
+
+function buildTlsParams(envParams?: EnvironmentParams) {
+  if (envParams && envParams.tls) {
+    return {
+      transport: "tls",
+      ...envParams.tls,
+    }
+  }
+
+  return {}
 }
 
 export type LinkOpenEvents = SenderEvents.senderOpen | ReceiverEvents.receiverOpen
