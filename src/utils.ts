@@ -23,6 +23,7 @@ export const EXCLUSIVE = 1
 export const STREAM_FILTER_SPEC = "rabbitmq:stream-filter"
 export const STREAM_OFFSET_SPEC = "rabbitmq:stream-offset-spec"
 export const STREAM_FILTER_MATCH_UNFILTERED = "rabbitmq:stream-match-unfiltered"
+export const STREAM_SQL_FILTER = "amqp:sql-filter"
 
 export type SourceFilter = Dictionary<string | bigint | boolean | string[]>
 

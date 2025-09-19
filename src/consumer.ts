@@ -15,6 +15,7 @@ import {
   STREAM_FILTER_MATCH_UNFILTERED,
   STREAM_FILTER_SPEC,
   STREAM_OFFSET_SPEC,
+  STREAM_SQL_FILTER,
 } from "./utils.js"
 import { openLink } from "./rhea_wrapper.js"
 import { createConsumerAddressFrom } from "./message.js"
@@ -27,6 +28,7 @@ export type StreamOptions = {
   name: string
   offset?: Offset
   filterValues?: string[]
+  sqlFilter?: string
   matchUnfiltered?: boolean
 }
 
@@ -51,7 +53,10 @@ const getConsumerReceiverLinkConfigurationFrom = (
     timeout: 0,
     dynamic: false,
     durable: 0,
-    filter,
+    filter: {
+      selector: (s: string) => filter ? filter[s] : undefined,
+      ...filter
+    },
   },
 })
 
@@ -131,6 +136,9 @@ function createConsumerFilterFrom(params: CreateConsumerParams): SourceFilter | 
   }
   if (params.stream.filterValues) {
     filters[STREAM_FILTER_SPEC] = params.stream.filterValues
+  }
+  if (params.stream.sqlFilter) {
+    filters[STREAM_SQL_FILTER] = params.stream.sqlFilter
   }
   if (params.stream.matchUnfiltered) {
     filters[STREAM_FILTER_MATCH_UNFILTERED] = params.stream.matchUnfiltered
