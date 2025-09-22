@@ -359,8 +359,8 @@ function buildBindingDestinationFrom(destination: Exchange | Queue) {
   return { destination_queue: destination.getInfo.name }
 }
 
-const sendable = async (senderLink: Sender) =>
-  new Promise((res) => {
-    console.log("Checking sendable")
-    if (!senderLink.sendable()) senderLink.once(SenderEvents.sendable, () => res(true))
-  })
+// const sendable = async (senderLink: Sender) =>
+//   new Promise((res) => {
+//     console.log("Checking sendable")
+//     if (!senderLink.sendable()) senderLink.once(SenderEvents.sendable, () => res(true))
+//   })
