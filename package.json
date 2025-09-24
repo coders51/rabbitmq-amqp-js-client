@@ -76,7 +76,6 @@
     "vitest": "^3.2.1"
   },
   "dependencies": {
-    "@anthropic-ai/claude-code": "^1.0.123",
     "rhea": "github:amqp/rhea"
   }
 }
