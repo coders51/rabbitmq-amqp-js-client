@@ -1,6 +1,6 @@
 declare global {
-  // Note the capital "W"
-  var AmqpManagement: any
-  var createEnvironment: any
-  var AmqpEnvironment: any
+  // Global type declarations for browser environments
+  const AmqpManagement: typeof import("./management.js").AmqpManagement
+  const createEnvironment: typeof import("./environment.js").createEnvironment
+  const AmqpEnvironment: typeof import("./environment.js").AmqpEnvironment
 }

@@ -2,36 +2,37 @@
   "name": "rabbitmq-amqp-js-client",
   "version": "0.3.1",
   "description": "Rabbit AMQP 1.0 client for JS/TS application",
-  "main": "dist/cjs/index.js",
-  "module": "dist/esm/index.js",
-  "types": "dist/esm/index.d.ts",
+  "main": "dist/index.cjs.js",
+  "module": "dist/index.es.js",
+  "types": "dist/index.d.ts",
   "type": "module",
   "exports": {
     ".": {
-      "browser": "./dist/umd/index.js",
+      "browser": "./dist/index.umd.js",
       "import": {
-        "types": "./dist/esm/index.d.ts",
-        "default": "./dist/esm/index.js"
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.es.js"
       },
       "require": {
-        "types": "./dist/cjs/index.d.ts",
-        "default": "./dist/cjs/index.js"
+        "default": "./dist/index.cjs.js"
       },
-      "default": "./dist/esm/index.js"
+      "default": "./dist/index.es.js"
     },
     "./dist/*": {
-      "types": "./dist/esm/*.d.ts",
-      "import": "./dist/esm/*.js",
-      "require": "./dist/cjs/*.js"
+      "types": "./dist/*.d.ts",
+      "import": "./dist/*.es.js",
+      "require": "./dist/*.cjs.js"
     }
   },
   "scripts": {
     "test": "vitest run",
-    "build": "tsc --project tsconfig.build.json && rollup --config rollup.config.js",
-    "build:browser": "vite build",
+    "build": "npm run build:node && npm run build:browser",
+    "build:node": "vite build --config vite.config.ts",
+    "build:browser": "vite build --config vite.config.browser.ts",
+    "build:clean": "rm -rf dist && npm run build",
     "check": "npm run check-ts && npm run check-lint && npm run check-format && npm run check-spell",
-    "check-ts": "tsc --noEmit",
-    "check-lint": "tsc --noEmit && eslint 'src/**/*.ts' 'test/**/*.ts'",
+    "check-ts": "tsc --project tsconfig.build.json --noEmit",
+    "check-lint": "eslint 'src/**/*.ts' 'test/**/*.ts'",
     "check-format": "prettier -c 'src/**/*.ts' 'test/**/*.ts'",
     "check-spell": "cspell 'src/**/*ts' 'test/**/*ts'",
     "format": "prettier -w './**/*.ts'"
@@ -70,10 +71,12 @@
     "typescript-eslint": "^8.33.1",
     "uuid": "^11.1.0",
     "vite": "^7.1.7",
+    "vite-plugin-dts": "^4.5.4",
     "vite-plugin-node-polyfills": "^0.24.0",
     "vitest": "^3.2.1"
   },
   "dependencies": {
+    "@anthropic-ai/claude-code": "^1.0.123",
     "rhea": "github:amqp/rhea"
   }
 }

@@ -3,7 +3,7 @@
   <head>
     <title>AMQP websockets example</title>
     <meta http-equiv="content-type" content="text/html;charset=utf-8" />
-    <script type="module" src="../dist_browser/rabbitmq-amqp-js-client.js"></script>
+    <script type="module" src="../dist/index.umd.js"></script>
   </head>
 
   <body>
@@ -14,7 +14,7 @@
       const testQueue = `test-queue-browser-example`
       const routingKey = `test-key-browser-example`
       console.log("Creating the environment through a websocket...")
-      const environment = createEnvironment({
+      const environment = RabbitmqAmqpClient.createEnvironment({
         host: "localhost",
         port: 3000,
         username: "rabbit",
@@ -36,15 +36,15 @@
       console.log("Opening a publisher and publishing 10 messages...")
       const publisher = await connection.createPublisher({ exchange: { name: testExchange, routingKey: routingKey } })
       for (const i of Array(10).keys()) {
-        const publishResult = await publisher.publish(rabbit.createAmqpMessage({ body: `Hello - ${i} - ` }))
+        const publishResult = await publisher.publish(RabbitmqAmqpClient.createAmqpMessage({ body: `Hello - ${i} - ` }))
         switch (publishResult.outcome) {
-          case rabbit.OutcomeState.ACCEPTED:
+          case RabbitmqAmqpClient.OutcomeState.ACCEPTED:
             console.log("Message Accepted")
             break
-          case rabbit.OutcomeState.RELEASED:
+          case RabbitmqAmqpClient.OutcomeState.RELEASED:
             console.log("Message Released")
             break
-          case rabbit.OutcomeState.REJECTED:
+          case RabbitmqAmqpClient.OutcomeState.REJECTED:
             console.log("Message Rejected")
             break
           default:

@@ -1,16 +1,57 @@
 {
   "extends": "@tsconfig/node22/tsconfig.json",
   "compilerOptions": {
-    "preserveConstEnums": true,
+    // Emit options - Vite will handle the actual bundling
+    "noEmit": true,
+    "skipLibCheck": true,
+
+    // Module options - optimized for library builds
+    "module": "ESNext",
+    "moduleResolution": "Node",
+    "target": "ES2020",
+    "lib": ["ES2020", "DOM", "DOM.Iterable"],
+
+    // Strict type checking options
+    "strict": true,
     "noImplicitReturns": true,
     "noFallthroughCasesInSwitch": true,
     "noImplicitThis": true,
     "strictNullChecks": true,
     "noUnusedLocals": true,
     "noUnusedParameters": true,
+    "exactOptionalPropertyTypes": true,
+
+    // Advanced options
+    "preserveConstEnums": true,
+    "removeComments": false,
     "sourceMap": true,
-    "outDir": "dist"
+    "declaration": true,
+    "declarationMap": true,
+
+    // Interop constraints
+    "allowSyntheticDefaultImports": true,
+    "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true,
+    "isolatedModules": true,
+
+    // Type checking for better library compatibility
+    "allowJs": false,
+    "checkJs": false,
+
+    // Support for browser globals
+    "types": ["node"],
+    "typeRoots": ["node_modules/@types"]
   },
-  "include": ["src/**/*"],
-  "exclude": ["node_modules", "examples", "**/*.spec.ts", "**/*.test.ts"]
+  "include": [
+    "src/**/*"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist",
+    "examples",
+    "test",
+    "**/*.spec.ts",
+    "**/*.test.ts",
+    "vite.config.ts"
+  ]
 }
