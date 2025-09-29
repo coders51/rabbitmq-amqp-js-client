@@ -202,21 +202,19 @@ describe("Consumer", () => {
     })
   })
 
-
-
   test("consumer can handle message on stream with sql filters", async () => {
     const publisher = await connection.createPublisher({ queue: { name: streamName } })
     const filteredMessage = createAmqpMessage({
       body: "my body",
-      properties: {
-        subject: "foo"
-      }
+      message_properties: {
+        subject: "foo",
+      },
     })
     const discardedMessage = createAmqpMessage({
       body: "discard me",
-      properties: {
-        subject: "bar"
-      }
+      message_properties: {
+        subject: "bar",
+      },
     })
     await publisher.publish(filteredMessage)
     await publisher.publish(discardedMessage)
@@ -230,12 +228,9 @@ describe("Consumer", () => {
         sqlFilter: "properties.subject = '123'",
       },
       messageHandler: (context, message) => {
-        console.log("message", message.application_properties)
-        if (
-          message.application_properties
-          && message.application_properties.subject == "foo"
-        ) {
-          console.log("sono qui ")
+        console.log("message", message.subject)
+        if (message.subject && message.subject == "foo") {
+          console.log("hello ")
           received = message.body
         }
         context.accept()

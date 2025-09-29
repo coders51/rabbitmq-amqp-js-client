@@ -8,6 +8,7 @@ import {
   EventContext,
   Message,
   Dictionary,
+  filter,
 } from "rhea"
 import {
   Offset,
@@ -53,10 +54,7 @@ const getConsumerReceiverLinkConfigurationFrom = (
     timeout: 0,
     dynamic: false,
     durable: 0,
-    filter: {
-      selector: (s: string) => filter ? filter[s] : undefined,
-      ...filter
-    },
+    filter,
   },
 })
 
@@ -130,7 +128,7 @@ function createConsumerFilterFrom(params: CreateConsumerParams): SourceFilter | 
     throw new Error("At least one between offset and filterValues must be set when using filtering")
   }
 
-  const filters: Dictionary<string | bigint | boolean | string[]> = {}
+  const filters: Dictionary<string | bigint | boolean | string[] | any> = {}
   if (params.stream.offset) {
     filters[STREAM_OFFSET_SPEC] = params.stream.offset.toValue()
   }
@@ -138,7 +136,9 @@ function createConsumerFilterFrom(params: CreateConsumerParams): SourceFilter | 
     filters[STREAM_FILTER_SPEC] = params.stream.filterValues
   }
   if (params.stream.sqlFilter) {
-    filters[STREAM_SQL_FILTER] = params.stream.sqlFilter
+    console.log(filter.selector(`Described(${String(Symbol("amqp:sql-filter"))}, ${params.stream.sqlFilter})`))
+    const { descriptor, value } = filter.selector(params.stream.sqlFilter)["jms-selector"]
+    filters["sql-filter"] = { descriptor: descriptor.value, value }
   }
   if (params.stream.matchUnfiltered) {
     filters[STREAM_FILTER_MATCH_UNFILTERED] = params.stream.matchUnfiltered
