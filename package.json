@@ -2,8 +2,8 @@
   "name": "rabbitmq-amqp-js-client",
   "version": "0.3.2",
   "description": "Rabbit AMQP 1.0 client for JS/TS application",
-  "main": "dist/index.cjs.js",
-  "module": "dist/index.es.js",
+  "main": "dist/index.cjs",
+  "module": "dist/index.js",
   "types": "dist/index.d.ts",
   "type": "module",
   "exports": {
@@ -11,23 +11,23 @@
       "browser": "./dist/index.umd.js",
       "import": {
         "types": "./dist/index.d.ts",
-        "default": "./dist/index.es.js"
+        "default": "./dist/index.js"
       },
       "require": {
-        "default": "./dist/index.cjs.js"
+        "default": "./dist/index.cjs"
       },
-      "default": "./dist/index.es.js"
+      "default": "./dist/index.js"
     },
     "./dist/*": {
       "types": "./dist/*.d.ts",
-      "import": "./dist/*.es.js",
-      "require": "./dist/*.cjs.js"
+      "import": "./dist/*.js",
+      "require": "./dist/*.cjs"
     }
   },
   "scripts": {
     "test": "vitest run",
     "build": "npm run build:node && npm run build:browser",
-    "build:node": "vite build --config vite.config.ts",
+    "build:node": "vite build --config vite.config.cjs.ts && vite build --config vite.config.esm.ts",
     "build:browser": "vite build --config vite.config.browser.ts",
     "build:clean": "rm -rf dist && npm run build",
     "check": "npm run check-ts && npm run check-lint && npm run check-format && npm run check-spell",

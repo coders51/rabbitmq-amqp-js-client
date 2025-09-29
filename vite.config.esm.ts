@@ -1,18 +1,9 @@
 import { defineConfig } from "vite"
 import { resolve } from "path"
-import { nodePolyfills } from "vite-plugin-node-polyfills"
 import dts from "vite-plugin-dts"
 
 export default defineConfig({
   plugins: [
-    nodePolyfills({
-      globals: {
-        Buffer: true,
-        global: true,
-        process: true,
-      },
-      protocolImports: true,
-    }),
     dts({
       include: ["src/**/*"],
       exclude: ["src/**/*.test.ts", "src/**/*.spec.ts", "test/**/*"],
@@ -25,29 +16,41 @@ export default defineConfig({
     lib: {
       entry: resolve(__dirname, "src/index.ts"),
       name: "RabbitmqAmqpClient",
-      formats: ["es", "cjs"],
-      fileName: (format) => `index.${format}.js`,
+      formats: ["es"],
+      fileName: () => `index.js`,
     },
     rollupOptions: {
-      external: ["rhea"],
+      external: [
+        "crypto",
+        // Node.js built-in modules that rhea needs
+        "net",
+        "tls",
+        "os",
+        "path",
+        "util",
+        "events",
+        "stream",
+        "buffer",
+        "fs",
+        "dns"
+      ],
       output: {
-        globals: {
-          rhea: "rhea",
-        },
+        globals: {},
       },
     },
     outDir: "dist",
-    emptyOutDir: true,
+    emptyOutDir: false,
     sourcemap: true,
     minify: false,
-    target: ["node16", "es2020"],
-    commonjsOptions: {
-      include: [/node_modules/],
-    },
+    target: "node16",
   },
   resolve: {
     alias: {
       "@": resolve(__dirname, "src"),
     },
+  },
+  define: {
+    // Ensure we're building for Node.js, not browser
+    global: 'globalThis',
   },
 })
