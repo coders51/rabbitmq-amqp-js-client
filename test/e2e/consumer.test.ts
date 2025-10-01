@@ -202,7 +202,81 @@ describe("Consumer", () => {
     })
   })
 
-  test("consumer can handle message on stream with sql filters", async () => {
+  test("consumer can handle message on stream with filter on message properties", async () => {
+    const publisher = await connection.createPublisher({ queue: { name: streamName } })
+    const filteredMessage = createAmqpMessage({
+      body: "my body",
+      message_properties: {
+        subject: "foo",
+      },
+    })
+    const discardedMessage = createAmqpMessage({
+      body: "discard me",
+      message_properties: {
+        subject: "bar",
+      },
+    })
+    await publisher.publish(filteredMessage)
+    await publisher.publish(discardedMessage)
+    let received: number = 0
+
+    const consumer = await connection.createConsumer({
+      stream: {
+        name: streamName,
+        offset: Offset.first(),
+        matchUnfiltered: false,
+        messagePropertiesFilter: { subject: "foo" },
+      },
+      messageHandler: (context) => {
+        received++
+        context.accept()
+      },
+    })
+    consumer.start()
+
+    await eventually(() => {
+      expect(received).to.be.eql(1)
+    })
+  })
+
+  test("consumer can handle message on stream with filter on application properties", async () => {
+    const publisher = await connection.createPublisher({ queue: { name: streamName } })
+    const filteredMessage = createAmqpMessage({
+      body: "my body",
+      application_properties: {
+        test: "foo",
+      },
+    })
+    const discardedMessage = createAmqpMessage({
+      body: "discard me",
+      application_properties: {
+        test: "bar",
+      },
+    })
+    await publisher.publish(filteredMessage)
+    await publisher.publish(discardedMessage)
+    let received: number = 0
+
+    const consumer = await connection.createConsumer({
+      stream: {
+        name: streamName,
+        offset: Offset.first(),
+        matchUnfiltered: false,
+        applicationPropertiesFilter: { test: "foo" },
+      },
+      messageHandler: (context) => {
+        received++
+        context.accept()
+      },
+    })
+    consumer.start()
+
+    await eventually(() => {
+      expect(received).to.be.eql(1)
+    })
+  })
+
+  test("consumer can handle message on stream with SQL filters on message properties", async () => {
     const publisher = await connection.createPublisher({ queue: { name: streamName } })
     const filteredMessage = createAmqpMessage({
       body: "my body",
@@ -225,12 +299,49 @@ describe("Consumer", () => {
         name: streamName,
         offset: Offset.first(),
         matchUnfiltered: false,
-        sqlFilter: "properties.subject = '123'",
+        sqlFilter: "properties.subject = 'foo'",
       },
       messageHandler: (context, message) => {
-        console.log("message", message.subject)
         if (message.subject && message.subject == "foo") {
-          console.log("hello ")
+          received = message.body
+        }
+        context.accept()
+      },
+    })
+    consumer.start()
+
+    await eventually(() => {
+      expect(received).to.be.eql("my body")
+    })
+  })
+
+  test("consumer can handle message on stream with SQL filters on message application properties", async () => {
+    const publisher = await connection.createPublisher({ queue: { name: streamName } })
+    const filteredMessage = createAmqpMessage({
+      body: "my body",
+      application_properties: {
+        test: "foo",
+      },
+    })
+    const discardedMessage = createAmqpMessage({
+      body: "discard me",
+      application_properties: {
+        test: "bar",
+      },
+    })
+    await publisher.publish(filteredMessage)
+    await publisher.publish(discardedMessage)
+    let received: string = ""
+
+    const consumer = await connection.createConsumer({
+      stream: {
+        name: streamName,
+        offset: Offset.first(),
+        matchUnfiltered: false,
+        sqlFilter: "application_properties.test = 'foo'",
+      },
+      messageHandler: (context, message) => {
+        if (message.application_properties && message.application_properties.test == "foo") {
           received = message.body
         }
         context.accept()
