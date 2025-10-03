@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, test } from "vitest"
 import { host, port, username, password, eventually, deleteExchange, deleteQueue } from "../../support/util.js"
-import { Connection, Container, create_container, SenderEvents } from "rhea"
+import { Connection, Container, create_container, SenderEvents, generate_uuid } from "rhea"
 import {
   closeConnection,
   openConnection,
@@ -12,7 +12,6 @@ import {
   testExchangeName,
   testQueueName,
 } from "../../support/rhea_utils.js"
-import { randomUUID } from "crypto"
 
 describe("Creating a publisher through rhea", () => {
   let container: Container
@@ -73,7 +72,7 @@ describe("Creating a publisher through rhea", () => {
         test = true
       })
 
-      publisher.send({ message_id: randomUUID(), body: "Hello world!" })
+      publisher.send({ message_id: generate_uuid(), body: "Hello world!" })
 
       await eventually(async () => {
         expect(test).eql(true)
@@ -116,7 +115,7 @@ describe("Creating a publisher through rhea", () => {
         test = true
       })
 
-      publisher.send({ message_id: randomUUID(), body: "Hello world!" })
+      publisher.send({ message_id: generate_uuid(), body: "Hello world!" })
 
       await eventually(async () => {
         expect(test).eql(true)
@@ -159,7 +158,7 @@ describe("Creating a publisher through rhea", () => {
         test = true
       })
 
-      publisher.send({ message_id: randomUUID(), body: "Hello world!", to: `/queues/${testQueueName}` })
+      publisher.send({ message_id: generate_uuid(), body: "Hello world!", to: `/queues/${testQueueName}` })
 
       await eventually(async () => {
         expect(test).eql(true)

@@ -20,20 +20,7 @@ export default defineConfig({
       fileName: () => `index.js`,
     },
     rollupOptions: {
-      external: [
-        "crypto",
-        // Node.js built-in modules that rhea needs
-        "net",
-        "tls",
-        "os",
-        "path",
-        "util",
-        "events",
-        "stream",
-        "buffer",
-        "fs",
-        "dns"
-      ],
+      external: ["crypto", "net", "tls", "os", "path", "util", "events", "stream", "buffer", "fs", "dns"],
       output: {
         globals: {},
       },
@@ -51,6 +38,6 @@ export default defineConfig({
   },
   define: {
     // Ensure we're building for Node.js, not browser
-    global: 'globalThis',
+    global: "globalThis",
   },
 })

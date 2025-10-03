@@ -1,7 +1,16 @@
-import { Connection, Delivery, EventContext, Message, ReceiverOptions, Sender, SenderEvents, SenderOptions } from "rhea"
+import {
+  Connection,
+  Delivery,
+  EventContext,
+  generate_uuid,
+  Message,
+  ReceiverOptions,
+  Sender,
+  SenderEvents,
+  SenderOptions,
+} from "rhea"
 import { OutcomeState } from "./utils.js"
 import { openLink } from "./rhea_wrapper.js"
-import { randomUUID } from "crypto"
 import { inspect } from "util"
 import { createPublisherAddressFrom, DestinationOptions } from "./message.js"
 
@@ -49,7 +58,7 @@ export class AmqpPublisher implements Publisher {
     options?: DestinationOptions
   ): Promise<Publisher> {
     const address = createPublisherAddressFrom(options)
-    const id = randomUUID()
+    const id = generate_uuid()
     const senderLink = await AmqpPublisher.openSender(connection, id, address)
     return new AmqpPublisher(connection, senderLink, id, publishersList)
   }
