@@ -1,6 +1,6 @@
 {
   "name": "rabbitmq-amqp-js-client",
-  "version": "0.3.2",
+  "version": "0.3.3",
   "description": "Rabbit AMQP 1.0 client for JS/TS application",
   "main": "dist/index.cjs",
   "module": "dist/index.js",
