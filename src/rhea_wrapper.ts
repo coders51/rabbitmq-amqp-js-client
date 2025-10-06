@@ -64,7 +64,7 @@ function buildConnectParams(
   if (envParams.webSocket) {
     const ws = websocket_connect(envParams.webSocket.implementation)
     const wsUrl = envParams.webSocket.url ?? `ws://${envParams.host}:${envParams.port}/ws`
-    const connectionDetails = ws(wsUrl, "amqp", {})
+    const connectionDetails = ws(wsUrl, ["binary", "AMQPWSB10", "amqp"], {})
 
     return {
       connection_details: () => {

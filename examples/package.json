@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
+  "type": "module",
   "scripts": {
     "start": "node index.js",
     "rebuild-source": "cd .. && npm run build && cd - && npm install --force",
@@ -11,7 +12,8 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "rabbitmq-amqp-js-client": "file:../."
+    "rabbitmq-amqp-js-client": "file:../.",
+    "rhea": "^3.0.4"
   },
   "engines": {
     "node": "22.x.x"

@@ -8,6 +8,7 @@ import {
   Connection as RheaConnection,
   Sender,
   SenderOptions,
+  generate_uuid,
 } from "rhea"
 import { AmqpEndpoints, AmqpMethods, LinkMessageBuilder, ME } from "./link_message_builder.js"
 import {
@@ -21,8 +22,8 @@ import {
   RefreshTokensResponseDecoder,
 } from "./response_decoder.js"
 import { AmqpBinding, Binding, BindingInfo, BindingOptions } from "./binding.js"
-import { randomUUID } from "crypto"
 import { openReceiver, openSender } from "./rhea_wrapper.js"
+import { wait } from "./utils.js"
 
 export const MANAGEMENT_NODE_CONFIGURATION: SenderOptions | ReceiverOptions = {
   snd_settle_mode: 1,
@@ -49,6 +50,7 @@ export class AmqpManagement implements Management {
   static async create(connection: RheaConnection): Promise<AmqpManagement> {
     const senderLink = await openSender(connection)
     const receiverLink = await openReceiver(connection)
+    await wait(500)
     return new AmqpManagement(connection, senderLink, receiverLink)
   }
 
@@ -210,7 +212,7 @@ export class AmqpManagement implements Management {
 
   async bind(key: string, options: BindingOptions): Promise<Binding> {
     const bindingInfo: BindingInfo = {
-      id: randomUUID(),
+      id: generate_uuid(),
       source: options.source.getInfo.name,
       destination: options.destination.getInfo.name,
       arguments: options.arguments ?? {},

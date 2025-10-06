@@ -2,32 +2,37 @@
   "name": "rabbitmq-amqp-js-client",
   "version": "0.3.2",
   "description": "Rabbit AMQP 1.0 client for JS/TS application",
-  "main": "dist/index.js",
+  "main": "dist/index.cjs",
+  "module": "dist/index.js",
+  "types": "dist/index.d.ts",
   "type": "module",
   "exports": {
     ".": {
+      "browser": "./dist/index.umd.js",
       "import": {
         "types": "./dist/index.d.ts",
-        "default": "./dist/index.mjs"
+        "default": "./dist/index.js"
       },
       "require": {
-        "types": "./dist/index.d.cts",
         "default": "./dist/index.cjs"
       },
-      "default": "./dist/index.mjs"
+      "default": "./dist/index.js"
     },
     "./dist/*": {
       "types": "./dist/*.d.ts",
-      "import": "./dist/*.mjs",
+      "import": "./dist/*.js",
       "require": "./dist/*.cjs"
     }
   },
   "scripts": {
     "test": "vitest run",
-    "build": "tsc --project tsconfig.build.json && tsup",
+    "build": "npm run build:node && npm run build:browser",
+    "build:node": "vite build --config vite.config.cjs.ts && vite build --config vite.config.esm.ts",
+    "build:browser": "vite build --config vite.config.browser.ts",
+    "build:clean": "rm -rf dist && npm run build",
     "check": "npm run check-ts && npm run check-lint && npm run check-format && npm run check-spell",
-    "check-ts": "tsc --noEmit",
-    "check-lint": "tsc --noEmit && eslint 'src/**/*.ts' 'test/**/*.ts'",
+    "check-ts": "tsc --project tsconfig.build.json --noEmit",
+    "check-lint": "eslint 'src/**/*.ts' 'test/**/*.ts'",
     "check-format": "prettier -c 'src/**/*.ts' 'test/**/*.ts'",
     "check-spell": "cspell 'src/**/*ts' 'test/**/*ts'",
     "format": "prettier -w './**/*.ts'"
@@ -48,6 +53,9 @@
   "homepage": "https://github.com/coders51/rabbitmq-amqp-js-client#readme",
   "devDependencies": {
     "@eslint/js": "^9.28.0",
+    "@rollup/plugin-commonjs": "^28.0.6",
+    "@rollup/plugin-node-resolve": "^16.0.1",
+    "@rollup/plugin-typescript": "^12.1.4",
     "@tsconfig/node22": "^22.0.2",
     "@types/jsonwebtoken": "^9.0.10",
     "assertion-error": "^2.0.1",
@@ -57,9 +65,11 @@
     "got": "^14.4.7",
     "jsonwebtoken": "^9.0.2",
     "prettier": "3.5.3",
-    "tsup": "^8.5.0",
     "typescript": "^5.8.3",
     "typescript-eslint": "^8.33.1",
+    "vite": "^7.1.7",
+    "vite-plugin-dts": "^4.5.4",
+    "vite-plugin-node-polyfills": "^0.24.0",
     "vitest": "^3.2.1"
   },
   "dependencies": {

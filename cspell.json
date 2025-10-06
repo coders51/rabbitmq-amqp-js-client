@@ -4,6 +4,7 @@
     "ackmode",
     "ampq",
     "amqpvalue",
+    "AMQPWSB",
     "cacertfile",
     "certfile",
     "dste",
