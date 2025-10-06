@@ -8,6 +8,9 @@ import {
   EventContext,
   Message,
   Dictionary,
+  types,
+  Typed,
+  MessageProperties,
 } from "rhea"
 import {
   Offset,
@@ -15,6 +18,9 @@ import {
   STREAM_FILTER_MATCH_UNFILTERED,
   STREAM_FILTER_SPEC,
   STREAM_OFFSET_SPEC,
+  STREAM_FILTER_SQL,
+  STREAM_FILTER_MESSAGE_PROPERTIES,
+  STREAM_FILTER_APPLICATION_PROPERTIES,
 } from "./utils.js"
 import { openLink } from "./rhea_wrapper.js"
 import { createConsumerAddressFrom } from "./message.js"
@@ -27,6 +33,9 @@ export type StreamOptions = {
   name: string
   offset?: Offset
   filterValues?: string[]
+  messagePropertiesFilter?: MessageProperties
+  applicationPropertiesFilter?: Dictionary<string>
+  sqlFilter?: string
   matchUnfiltered?: boolean
 }
 
@@ -125,15 +134,26 @@ function createConsumerFilterFrom(params: CreateConsumerParams): SourceFilter | 
     throw new Error("At least one between offset and filterValues must be set when using filtering")
   }
 
-  const filters: Dictionary<string | bigint | boolean | string[]> = {}
+  const filters: Dictionary<string | bigint | boolean | string[] | Typed> = {}
   if (params.stream.offset) {
     filters[STREAM_OFFSET_SPEC] = params.stream.offset.toValue()
   }
   if (params.stream.filterValues) {
     filters[STREAM_FILTER_SPEC] = params.stream.filterValues
   }
+  if (params.stream.sqlFilter) {
+    filters[STREAM_FILTER_SQL] = types.wrap_described(params.stream.sqlFilter, 0x120)
+  }
   if (params.stream.matchUnfiltered) {
     filters[STREAM_FILTER_MATCH_UNFILTERED] = params.stream.matchUnfiltered
+  }
+  if (params.stream.messagePropertiesFilter) {
+    const symbolicMap = types.wrap_symbolic_map(params.stream.messagePropertiesFilter)
+    filters[STREAM_FILTER_MESSAGE_PROPERTIES] = types.wrap_described(symbolicMap, 0x173)
+  }
+  if (params.stream.applicationPropertiesFilter) {
+    const map = types.wrap_map(params.stream.applicationPropertiesFilter)
+    filters[STREAM_FILTER_APPLICATION_PROPERTIES] = types.wrap_described(map, 0x174)
   }
 
   return filters

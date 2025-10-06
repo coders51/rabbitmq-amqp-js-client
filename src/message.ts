@@ -1,4 +1,4 @@
-import { generate_uuid, MessageAnnotations, Message as RheaMessage } from "rhea"
+import { Dictionary, generate_uuid, MessageAnnotations, MessageProperties, Message as RheaMessage } from "rhea"
 import { AmqpEndpoints } from "./link_message_builder.js"
 import { inspect } from "util"
 import { CreateConsumerParams } from "./consumer.js"
@@ -18,6 +18,8 @@ type MessageOptions = {
   body: string
   destination?: DestinationOptions
   annotations?: MessageAnnotations
+  message_properties?: MessageProperties
+  application_properties?: Dictionary<string>
 }
 
 export function createAmqpMessage(options: MessageOptions): RheaMessage {
@@ -28,10 +30,19 @@ export function createAmqpMessage(options: MessageOptions): RheaMessage {
       to: createPublisherAddressFrom(options.destination),
       durable: true,
       message_annotations: options.annotations,
+      application_properties: options.application_properties,
+      ...(options.message_properties ? options.message_properties : {}),
     }
   }
 
-  return { message_id: generate_uuid(), body: options.body, durable: true, message_annotations: options.annotations }
+  return {
+    message_id: generate_uuid(),
+    body: options.body,
+    durable: true,
+    message_annotations: options.annotations,
+    application_properties: options.application_properties,
+    ...(options.message_properties ? options.message_properties : {}),
+  }
 }
 
 export function createPublisherAddressFrom(options?: DestinationOptions): string | undefined {

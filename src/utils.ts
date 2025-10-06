@@ -1,4 +1,4 @@
-import { Dictionary, Message } from "rhea"
+import { Dictionary, Message, Typed } from "rhea"
 import { QueueType } from "./queue.js"
 
 export enum AmqpResponseCodes {
@@ -20,11 +20,14 @@ export const DURABLE = 1
 export const AUTO_DELETE = 1
 export const EXCLUSIVE = 1
 
-export const STREAM_FILTER_SPEC = "rabbitmq:stream-filter"
 export const STREAM_OFFSET_SPEC = "rabbitmq:stream-offset-spec"
+export const STREAM_FILTER_SPEC = "rabbitmq:stream-filter"
 export const STREAM_FILTER_MATCH_UNFILTERED = "rabbitmq:stream-match-unfiltered"
+export const STREAM_FILTER_MESSAGE_PROPERTIES = "properties-filter"
+export const STREAM_FILTER_APPLICATION_PROPERTIES = "application-properties-filter"
+export const STREAM_FILTER_SQL = "sql-filter"
 
-export type SourceFilter = Dictionary<string | bigint | boolean | string[]>
+export type SourceFilter = Dictionary<string | bigint | boolean | string[] | Typed>
 
 export type Result<T, K> = OkResult<T> | ErrorResult<K>
 
