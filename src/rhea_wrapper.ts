@@ -54,7 +54,7 @@ export async function openReceiver(connection: RheaConnection): Promise<Receiver
   )
 }
 
-function buildConnectParams(
+export function buildConnectParams(
   envParams: EnvironmentParams,
   connParams?: ConnectionParams,
   getOauthPassword?: () => string
@@ -72,6 +72,9 @@ function buildConnectParams(
           ...connectionDetails(),
           host: envParams.host,
           port: envParams.port,
+          ...(envParams.oauth && getOauthPassword
+            ? { username: envParams.username, password: getOauthPassword() }
+            : {}),
         }
       },
       ...envParams,
