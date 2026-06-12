@@ -2,6 +2,7 @@ import { AmqpExchange, Exchange, ExchangeInfo, ExchangeOptions } from "./exchang
 import { AmqpQueue, Queue, QueueType, QueueOptions, QuorumQueueOptions, ClassicQueueOptions } from "./queue.js"
 import {
   EventContext,
+  Message,
   Receiver,
   ReceiverEvents,
   ReceiverOptions,
@@ -23,7 +24,7 @@ import {
 } from "./response_decoder.js"
 import { AmqpBinding, Binding, BindingInfo, BindingOptions } from "./binding.js"
 import { openReceiver, openSender } from "./rhea_wrapper.js"
-import { wait } from "./utils.js"
+import { Result } from "./utils.js"
 
 export const MANAGEMENT_NODE_CONFIGURATION: SenderOptions | ReceiverOptions = {
   snd_settle_mode: 1,
@@ -46,11 +47,12 @@ export interface Management {
   close: () => void
 }
 
+const TIMEOUT = 30_000
+
 export class AmqpManagement implements Management {
   static async create(connection: RheaConnection): Promise<AmqpManagement> {
     const senderLink = await openSender(connection)
     const receiverLink = await openReceiver(connection)
-    await wait(500)
     return new AmqpManagement(connection, senderLink, receiverLink)
   }
 
@@ -75,77 +77,80 @@ export class AmqpManagement implements Management {
     this.senderLink.close()
   }
 
-  async declareQueue(queueName: string, options: Partial<QueueOptions> = {}): Promise<Queue> {
+  private sendRequest<TBody, TResult>(
+    sentMessage: Message,
+    decoder: { decodeFrom: (message: Message, sentMessageId: string) => Result<TBody, Error> },
+    transform: (body: TBody) => TResult,
+    timeoutLabel: string
+  ): Promise<TResult> {
     return new Promise((res, rej) => {
-      this.receiverLink.once(ReceiverEvents.message, (context: EventContext) => {
-        if (!context.message) {
-          return rej(new Error("Receiver has not received any message"))
-        }
+      let settled = false
+      const handler = (context: EventContext): void => {
+        if (settled) return
+        const message = context.message
+        if (!message) return
+        if (String(message.correlation_id) !== String(sentMessage.message_id)) return
 
-        const response = new CreateQueueResponseDecoder().decodeFrom(context.message, String(message.message_id))
+        settled = true
+        clearTimeout(timer)
+        this.receiverLink.removeListener(ReceiverEvents.message, handler)
+
+        const response = decoder.decodeFrom(message, String(sentMessage.message_id))
         if (response.status === "error") {
-          return rej(response.error)
+          rej(response.error)
+        } else {
+          res(transform(response.body))
         }
+      }
 
-        return res(new AmqpQueue(response.body))
-      })
+      this.receiverLink.on(ReceiverEvents.message, handler)
+      this.senderLink.send(sentMessage)
 
-      const message = new LinkMessageBuilder()
-        .sendTo(`/${AmqpEndpoints.Queues}/${encodeURIComponent(queueName)}`)
-        .setReplyTo(ME)
-        .setAmqpMethod(AmqpMethods.PUT)
-        .setBody(buildDeclareQueueBody(options))
-        .build()
-      this.senderLink.send(message)
+      const timer = setTimeout(() => {
+        if (settled) return
+        settled = true
+        this.receiverLink.removeListener(ReceiverEvents.message, handler)
+        rej(new Error(`${timeoutLabel} timed out after ${TIMEOUT / 1000}s`))
+      }, TIMEOUT)
     })
+  }
+
+  async declareQueue(queueName: string, options: Partial<QueueOptions> = {}): Promise<Queue> {
+    const sentMessage = new LinkMessageBuilder()
+      .sendTo(`/${AmqpEndpoints.Queues}/${encodeURIComponent(queueName)}`)
+      .setReplyTo(ME)
+      .setAmqpMethod(AmqpMethods.PUT)
+      .setBody(buildDeclareQueueBody(options))
+      .build()
+    return this.sendRequest(
+      sentMessage,
+      new CreateQueueResponseDecoder(),
+      (body) => new AmqpQueue(body),
+      `declareQueue '${queueName}'`
+    )
   }
 
   async deleteQueue(queueName: string): Promise<boolean> {
-    return new Promise((res, rej) => {
-      this.receiverLink.once(ReceiverEvents.message, (context: EventContext) => {
-        if (!context.message) {
-          return rej(new Error("Receiver has not received any message"))
-        }
-
-        const response = new DeleteQueueResponseDecoder().decodeFrom(context.message, String(message.message_id))
-        if (response.status === "error") {
-          return rej(response.error)
-        }
-
-        return res(true)
-      })
-
-      const message = new LinkMessageBuilder()
-        .sendTo(`/${AmqpEndpoints.Queues}/${encodeURIComponent(queueName)}`)
-        .setReplyTo(ME)
-        .setAmqpMethod(AmqpMethods.DELETE)
-        .build()
-      this.senderLink.send(message)
-    })
+    const sentMessage = new LinkMessageBuilder()
+      .sendTo(`/${AmqpEndpoints.Queues}/${encodeURIComponent(queueName)}`)
+      .setReplyTo(ME)
+      .setAmqpMethod(AmqpMethods.DELETE)
+      .build()
+    return this.sendRequest(sentMessage, new DeleteQueueResponseDecoder(), () => true, `deleteQueue '${queueName}'`)
   }
 
   async getQueueInfo(queueName: string): Promise<Queue> {
-    return new Promise((res, rej) => {
-      this.receiverLink.once(ReceiverEvents.message, (context: EventContext) => {
-        if (!context.message) {
-          return rej(new Error("Receiver has not received any message"))
-        }
-
-        const response = new GetQueueInfoResponseDecoder().decodeFrom(context.message, String(message.message_id))
-        if (response.status === "error") {
-          return rej(response.error)
-        }
-
-        return res(new AmqpQueue(response.body))
-      })
-
-      const message = new LinkMessageBuilder()
-        .sendTo(`/${AmqpEndpoints.Queues}/${encodeURIComponent(queueName)}`)
-        .setReplyTo(ME)
-        .setAmqpMethod(AmqpMethods.GET)
-        .build()
-      this.senderLink.send(message)
-    })
+    const sentMessage = new LinkMessageBuilder()
+      .sendTo(`/${AmqpEndpoints.Queues}/${encodeURIComponent(queueName)}`)
+      .setReplyTo(ME)
+      .setAmqpMethod(AmqpMethods.GET)
+      .build()
+    return this.sendRequest(
+      sentMessage,
+      new GetQueueInfoResponseDecoder(),
+      (body) => new AmqpQueue(body),
+      `getQueueInfo '${queueName}'`
+    )
   }
 
   async declareExchange(exchangeName: string, options: Partial<ExchangeOptions> = {}): Promise<Exchange> {
@@ -156,58 +161,37 @@ export class AmqpManagement implements Management {
       durable: options.durable ?? true,
       name: exchangeName,
     }
-    return new Promise((res, rej) => {
-      this.receiverLink.once(ReceiverEvents.message, (context: EventContext) => {
-        if (!context.message) {
-          return rej(new Error("Receiver has not received any message"))
-        }
-
-        const response = new CreateExchangeResponseDecoder().decodeFrom(context.message, String(message.message_id))
-        if (response.status === "error") {
-          return rej(response.error)
-        }
-
-        return res(new AmqpExchange(exchangeInfo))
+    const sentMessage = new LinkMessageBuilder()
+      .sendTo(`/${AmqpEndpoints.Exchanges}/${encodeURIComponent(exchangeName)}`)
+      .setReplyTo(ME)
+      .setAmqpMethod(AmqpMethods.PUT)
+      .setBody({
+        type: options.type ?? "direct",
+        durable: options.durable ?? true,
+        auto_delete: options.auto_delete ?? false,
+        arguments: options.arguments ?? {},
       })
-
-      const message = new LinkMessageBuilder()
-        .sendTo(`/${AmqpEndpoints.Exchanges}/${encodeURIComponent(exchangeName)}`)
-        .setReplyTo(ME)
-        .setAmqpMethod(AmqpMethods.PUT)
-        .setBody({
-          type: options.type ?? "direct",
-          durable: options.durable ?? true,
-          auto_delete: options.auto_delete ?? false,
-          arguments: options.arguments ?? {},
-        })
-        .build()
-
-      this.senderLink.send(message)
-    })
+      .build()
+    return this.sendRequest(
+      sentMessage,
+      new CreateExchangeResponseDecoder(),
+      () => new AmqpExchange(exchangeInfo),
+      `declareExchange '${exchangeName}'`
+    )
   }
 
   async deleteExchange(exchangeName: string): Promise<boolean> {
-    return new Promise((res, rej) => {
-      this.receiverLink.once(ReceiverEvents.message, (context: EventContext) => {
-        if (!context.message) {
-          return rej(new Error("Receiver has not received any message"))
-        }
-
-        const response = new DeleteExchangeResponseDecoder().decodeFrom(context.message, String(message.message_id))
-        if (response.status === "error") {
-          return rej(response.error)
-        }
-
-        return res(true)
-      })
-
-      const message = new LinkMessageBuilder()
-        .sendTo(`/${AmqpEndpoints.Exchanges}/${encodeURIComponent(exchangeName)}`)
-        .setReplyTo(ME)
-        .setAmqpMethod(AmqpMethods.DELETE)
-        .build()
-      this.senderLink.send(message)
-    })
+    const sentMessage = new LinkMessageBuilder()
+      .sendTo(`/${AmqpEndpoints.Exchanges}/${encodeURIComponent(exchangeName)}`)
+      .setReplyTo(ME)
+      .setAmqpMethod(AmqpMethods.DELETE)
+      .build()
+    return this.sendRequest(
+      sentMessage,
+      new DeleteExchangeResponseDecoder(),
+      () => true,
+      `deleteExchange '${exchangeName}'`
+    )
   }
 
   async bind(key: string, options: BindingOptions): Promise<Binding> {
@@ -217,84 +201,44 @@ export class AmqpManagement implements Management {
       destination: options.destination.getInfo.name,
       arguments: options.arguments ?? {},
     }
-    return new Promise((res, rej) => {
-      this.receiverLink.once(ReceiverEvents.message, (context: EventContext) => {
-        if (!context.message) {
-          return rej(new Error("Receiver has not received any message"))
-        }
-
-        const response = new CreateBindingResponseDecoder().decodeFrom(context.message, String(message.message_id))
-        if (response.status === "error") {
-          return rej(response.error)
-        }
-
-        return res(new AmqpBinding(bindingInfo))
+    const sentMessage = new LinkMessageBuilder()
+      .sendTo(`/${AmqpEndpoints.Bindings}`)
+      .setReplyTo(ME)
+      .setAmqpMethod(AmqpMethods.POST)
+      .setBody({
+        source: options.source.getInfo.name,
+        binding_key: key,
+        arguments: options.arguments ?? {},
+        ...buildBindingDestinationFrom(options.destination),
       })
-
-      const message = new LinkMessageBuilder()
-        .sendTo(`/${AmqpEndpoints.Bindings}`)
-        .setReplyTo(ME)
-        .setAmqpMethod(AmqpMethods.POST)
-        .setBody({
-          source: options.source.getInfo.name,
-          binding_key: key,
-          arguments: options.arguments ?? {},
-          ...buildBindingDestinationFrom(options.destination),
-        })
-        .build()
-      this.senderLink.send(message)
-    })
+      .build()
+    return this.sendRequest(
+      sentMessage,
+      new CreateBindingResponseDecoder(),
+      () => new AmqpBinding(bindingInfo),
+      `bind '${key}'`
+    )
   }
 
   async unbind(key: string, options: BindingOptions): Promise<boolean> {
-    return new Promise((res, rej) => {
-      this.receiverLink.once(ReceiverEvents.message, (context: EventContext) => {
-        if (!context.message) {
-          return rej(new Error("Receiver has not received any message"))
-        }
-
-        const response = new DeleteBindingResponseDecoder().decodeFrom(context.message, String(message.message_id))
-        if (response.status === "error") {
-          return rej(response.error)
-        }
-
-        return res(true)
-      })
-
-      const message = new LinkMessageBuilder()
-        .sendTo(
-          `/${AmqpEndpoints.Bindings}/${buildUnbindEndpointFrom({ source: options.source, destination: options.destination, key })}`
-        )
-        .setReplyTo(ME)
-        .setAmqpMethod(AmqpMethods.DELETE)
-        .build()
-      this.senderLink.send(message)
-    })
+    const sentMessage = new LinkMessageBuilder()
+      .sendTo(
+        `/${AmqpEndpoints.Bindings}/${buildUnbindEndpointFrom({ source: options.source, destination: options.destination, key })}`
+      )
+      .setReplyTo(ME)
+      .setAmqpMethod(AmqpMethods.DELETE)
+      .build()
+    return this.sendRequest(sentMessage, new DeleteBindingResponseDecoder(), () => true, `unbind '${key}'`)
   }
 
   async refreshToken(token: string): Promise<boolean> {
-    return new Promise((res, rej) => {
-      this.receiverLink.once(ReceiverEvents.message, (context: EventContext) => {
-        if (!context.message) {
-          return rej(new Error("Receiver has not received any message"))
-        }
-
-        const response = new RefreshTokensResponseDecoder().decodeFrom(context.message, String(message.message_id))
-        if (response.status === "error") {
-          return rej(response.error)
-        }
-
-        return res(true)
-      })
-
-      const message = new LinkMessageBuilder()
-        .sendTo(`/${AmqpEndpoints.AuthTokens}`)
-        .setReplyTo(ME)
-        .setAmqpMethod(AmqpMethods.PUT)
-        .setBody(Buffer.from(token, "ascii"))
-        .build()
-      this.senderLink.send(message)
-    })
+    const sentMessage = new LinkMessageBuilder()
+      .sendTo(`/${AmqpEndpoints.AuthTokens}`)
+      .setReplyTo(ME)
+      .setAmqpMethod(AmqpMethods.PUT)
+      .setBody(Buffer.from(token, "ascii"))
+      .build()
+    return this.sendRequest(sentMessage, new RefreshTokensResponseDecoder(), () => true, "refreshToken")
   }
 }
 
