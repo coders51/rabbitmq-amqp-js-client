@@ -21,10 +21,10 @@ import {
   DeleteQueueResponseDecoder,
   GetQueueInfoResponseDecoder,
   RefreshTokensResponseDecoder,
+  ResponseDecoder,
 } from "./response_decoder.js"
 import { AmqpBinding, Binding, BindingInfo, BindingOptions } from "./binding.js"
 import { openReceiver, openSender } from "./rhea_wrapper.js"
-import { Result } from "./utils.js"
 
 export const MANAGEMENT_NODE_CONFIGURATION: SenderOptions | ReceiverOptions = {
   snd_settle_mode: 1,
@@ -36,18 +36,18 @@ export const MANAGEMENT_NODE_CONFIGURATION: SenderOptions | ReceiverOptions = {
 }
 
 export interface Management {
-  declareQueue: (queueName: string, options?: Partial<QueueOptions>) => Promise<Queue>
-  deleteQueue: (queueName: string) => Promise<boolean>
-  getQueueInfo: (queueName: string) => Promise<Queue>
-  declareExchange: (exchangeName: string, options?: Partial<ExchangeOptions>) => Promise<Exchange>
-  deleteExchange: (exchangeName: string) => Promise<boolean>
-  bind: (key: string, options: BindingOptions) => Promise<Binding>
-  unbind: (key: string, options: BindingOptions) => Promise<boolean>
-  refreshToken: (token: string) => Promise<boolean>
+  declareQueue: (queueName: string, options?: Partial<QueueOptions>, timeoutMs?: number) => Promise<Queue>
+  deleteQueue: (queueName: string, timeoutMs?: number) => Promise<boolean>
+  getQueueInfo: (queueName: string, timeoutMs?: number) => Promise<Queue>
+  declareExchange: (exchangeName: string, options?: Partial<ExchangeOptions>, timeoutMs?: number) => Promise<Exchange>
+  deleteExchange: (exchangeName: string, timeoutMs?: number) => Promise<boolean>
+  bind: (key: string, options: BindingOptions, timeoutMs?: number) => Promise<Binding>
+  unbind: (key: string, options: BindingOptions, timeoutMs?: number) => Promise<boolean>
+  refreshToken: (token: string, timeoutMs?: number) => Promise<boolean>
   close: () => void
 }
 
-const TIMEOUT = 30_000
+const DEFAULT_TIMEOUT = 30_000
 
 export class AmqpManagement implements Management {
   static async create(connection: RheaConnection): Promise<AmqpManagement> {
@@ -79,10 +79,12 @@ export class AmqpManagement implements Management {
 
   private sendRequest<TBody, TResult>(
     sentMessage: Message,
-    decoder: { decodeFrom: (message: Message, sentMessageId: string) => Result<TBody, Error> },
+    decoder: ResponseDecoder<TBody>,
     transform: (body: TBody) => TResult,
-    timeoutLabel: string
+    timeoutLabel: string,
+    timeoutMs?: number
   ): Promise<TResult> {
+    timeoutMs = timeoutMs ?? DEFAULT_TIMEOUT
     return new Promise((res, rej) => {
       let settled = false
       const handler = (context: EventContext): void => {
@@ -110,12 +112,12 @@ export class AmqpManagement implements Management {
         if (settled) return
         settled = true
         this.receiverLink.removeListener(ReceiverEvents.message, handler)
-        rej(new Error(`${timeoutLabel} timed out after ${TIMEOUT / 1000}s`))
-      }, TIMEOUT)
+        rej(new Error(`${timeoutLabel} timed out after ${timeoutMs / 1000}s`))
+      }, timeoutMs)
     })
   }
 
-  async declareQueue(queueName: string, options: Partial<QueueOptions> = {}): Promise<Queue> {
+  async declareQueue(queueName: string, options: Partial<QueueOptions> = {}, timeoutMs?: number): Promise<Queue> {
     const sentMessage = new LinkMessageBuilder()
       .sendTo(`/${AmqpEndpoints.Queues}/${encodeURIComponent(queueName)}`)
       .setReplyTo(ME)
@@ -126,20 +128,27 @@ export class AmqpManagement implements Management {
       sentMessage,
       new CreateQueueResponseDecoder(),
       (body) => new AmqpQueue(body),
-      `declareQueue '${queueName}'`
+      `declareQueue '${queueName}'`,
+      timeoutMs
     )
   }
 
-  async deleteQueue(queueName: string): Promise<boolean> {
+  async deleteQueue(queueName: string, timeoutMs?: number): Promise<boolean> {
     const sentMessage = new LinkMessageBuilder()
       .sendTo(`/${AmqpEndpoints.Queues}/${encodeURIComponent(queueName)}`)
       .setReplyTo(ME)
       .setAmqpMethod(AmqpMethods.DELETE)
       .build()
-    return this.sendRequest(sentMessage, new DeleteQueueResponseDecoder(), () => true, `deleteQueue '${queueName}'`)
+    return this.sendRequest(
+      sentMessage,
+      new DeleteQueueResponseDecoder(),
+      () => true,
+      `deleteQueue '${queueName}'`,
+      timeoutMs
+    )
   }
 
-  async getQueueInfo(queueName: string): Promise<Queue> {
+  async getQueueInfo(queueName: string, timeoutMs?: number): Promise<Queue> {
     const sentMessage = new LinkMessageBuilder()
       .sendTo(`/${AmqpEndpoints.Queues}/${encodeURIComponent(queueName)}`)
       .setReplyTo(ME)
@@ -149,11 +158,16 @@ export class AmqpManagement implements Management {
       sentMessage,
       new GetQueueInfoResponseDecoder(),
       (body) => new AmqpQueue(body),
-      `getQueueInfo '${queueName}'`
+      `getQueueInfo '${queueName}'`,
+      timeoutMs
     )
   }
 
-  async declareExchange(exchangeName: string, options: Partial<ExchangeOptions> = {}): Promise<Exchange> {
+  async declareExchange(
+    exchangeName: string,
+    options: Partial<ExchangeOptions> = {},
+    timeoutMs?: number
+  ): Promise<Exchange> {
     const exchangeInfo: ExchangeInfo = {
       type: options.type ?? "direct",
       arguments: options.arguments ?? {},
@@ -176,11 +190,12 @@ export class AmqpManagement implements Management {
       sentMessage,
       new CreateExchangeResponseDecoder(),
       () => new AmqpExchange(exchangeInfo),
-      `declareExchange '${exchangeName}'`
+      `declareExchange '${exchangeName}'`,
+      timeoutMs
     )
   }
 
-  async deleteExchange(exchangeName: string): Promise<boolean> {
+  async deleteExchange(exchangeName: string, timeoutMs?: number): Promise<boolean> {
     const sentMessage = new LinkMessageBuilder()
       .sendTo(`/${AmqpEndpoints.Exchanges}/${encodeURIComponent(exchangeName)}`)
       .setReplyTo(ME)
@@ -190,11 +205,12 @@ export class AmqpManagement implements Management {
       sentMessage,
       new DeleteExchangeResponseDecoder(),
       () => true,
-      `deleteExchange '${exchangeName}'`
+      `deleteExchange '${exchangeName}'`,
+      timeoutMs
     )
   }
 
-  async bind(key: string, options: BindingOptions): Promise<Binding> {
+  async bind(key: string, options: BindingOptions, timeoutMs?: number): Promise<Binding> {
     const bindingInfo: BindingInfo = {
       id: generate_uuid(),
       source: options.source.getInfo.name,
@@ -216,11 +232,12 @@ export class AmqpManagement implements Management {
       sentMessage,
       new CreateBindingResponseDecoder(),
       () => new AmqpBinding(bindingInfo),
-      `bind '${key}'`
+      `bind '${key}'`,
+      timeoutMs
     )
   }
 
-  async unbind(key: string, options: BindingOptions): Promise<boolean> {
+  async unbind(key: string, options: BindingOptions, timeoutMs?: number): Promise<boolean> {
     const sentMessage = new LinkMessageBuilder()
       .sendTo(
         `/${AmqpEndpoints.Bindings}/${buildUnbindEndpointFrom({ source: options.source, destination: options.destination, key })}`
@@ -228,17 +245,17 @@ export class AmqpManagement implements Management {
       .setReplyTo(ME)
       .setAmqpMethod(AmqpMethods.DELETE)
       .build()
-    return this.sendRequest(sentMessage, new DeleteBindingResponseDecoder(), () => true, `unbind '${key}'`)
+    return this.sendRequest(sentMessage, new DeleteBindingResponseDecoder(), () => true, `unbind '${key}'`, timeoutMs)
   }
 
-  async refreshToken(token: string): Promise<boolean> {
+  async refreshToken(token: string, timeoutMs?: number): Promise<boolean> {
     const sentMessage = new LinkMessageBuilder()
       .sendTo(`/${AmqpEndpoints.AuthTokens}`)
       .setReplyTo(ME)
       .setAmqpMethod(AmqpMethods.PUT)
       .setBody(Buffer.from(token, "ascii"))
       .build()
-    return this.sendRequest(sentMessage, new RefreshTokensResponseDecoder(), () => true, "refreshToken")
+    return this.sendRequest(sentMessage, new RefreshTokensResponseDecoder(), () => true, "refreshToken", timeoutMs)
   }
 }
 

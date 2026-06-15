@@ -2,8 +2,8 @@ import { Message } from "rhea"
 import { AUTO_DELETE, DURABLE, EXCLUSIVE, isError, queueTypeFromString, Result } from "./utils.js"
 import { DeletedQueueInfo, QueueInfo } from "./queue.js"
 
-interface ResponseDecoder {
-  decodeFrom: (receivedMessage: Message, sentMessageId: string) => Result<unknown, Error>
+export interface ResponseDecoder<T> {
+  decodeFrom: (receivedMessage: Message, sentMessageId: string) => Result<T, Error>
 }
 
 function validateResponse(receivedMessage: Message, sentMessageId: string): Error | null {
@@ -16,7 +16,7 @@ function validateResponse(receivedMessage: Message, sentMessageId: string): Erro
   return null
 }
 
-export class CreateQueueResponseDecoder implements ResponseDecoder {
+export class CreateQueueResponseDecoder implements ResponseDecoder<QueueInfo> {
   decodeFrom(receivedMessage: Message, sentMessageId: string): Result<QueueInfo, Error> {
     const error = validateResponse(receivedMessage, sentMessageId)
     if (error) return { status: "error", error }
@@ -41,7 +41,7 @@ export class CreateQueueResponseDecoder implements ResponseDecoder {
 
 export class GetQueueInfoResponseDecoder extends CreateQueueResponseDecoder {}
 
-export class DeleteQueueResponseDecoder implements ResponseDecoder {
+export class DeleteQueueResponseDecoder implements ResponseDecoder<DeletedQueueInfo> {
   decodeFrom(receivedMessage: Message, sentMessageId: string): Result<DeletedQueueInfo, Error> {
     const error = validateResponse(receivedMessage, sentMessageId)
     if (error) return { status: "error", error }
@@ -56,7 +56,7 @@ export class DeleteQueueResponseDecoder implements ResponseDecoder {
   }
 }
 
-class EmptyBodyResponseDecoder implements ResponseDecoder {
+class EmptyBodyResponseDecoder implements ResponseDecoder<void> {
   decodeFrom(receivedMessage: Message, sentMessageId: string): Result<void, Error> {
     const error = validateResponse(receivedMessage, sentMessageId)
     if (error) return { status: "error", error }
