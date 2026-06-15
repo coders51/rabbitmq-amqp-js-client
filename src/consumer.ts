@@ -25,7 +25,7 @@ import {
 import { openLink } from "./rhea_wrapper.js"
 import { createConsumerAddressFrom } from "./message.js"
 import { QueueOptions } from "./message.js"
-import { AmqpDeliveryContext, DeliveryContext } from "./delivery_context.js"
+import { AmqpDeliveryContext, DeliveryContext, PreSettledDeliveryContext } from "./delivery_context.js"
 
 export type ConsumerMessageHandler = (context: DeliveryContext, message: Message) => void
 
@@ -42,16 +42,20 @@ export type StreamOptions = {
 export type SourceOptions = { stream: StreamOptions } | { queue: QueueOptions }
 
 export type CreateConsumerParams = SourceOptions & {
+  preSettled?: boolean
   messageHandler: ConsumerMessageHandler
 }
 
 const getConsumerReceiverLinkConfigurationFrom = (
   address: string,
   consumerId: string,
+  preSettled: boolean,
   filter?: SourceFilter
 ): SenderOptions | ReceiverOptions => ({
-  snd_settle_mode: 0,
+  snd_settle_mode: preSettled ? 1 : 0,
   rcv_settle_mode: 0,
+  autoaccept: preSettled,
+  autosettle: preSettled,
   name: consumerId,
   target: { address, expiry_policy: "SESSION_END", durable: 0, dynamic: false },
   source: {
@@ -71,13 +75,16 @@ export interface Consumer {
 }
 
 export class AmqpConsumer implements Consumer {
+  private static readonly PRE_SETTLED_DELIVERY_CONTEXT = new PreSettledDeliveryContext()
+
   static async createFrom(connection: Connection, consumersList: Map<string, Consumer>, params: CreateConsumerParams) {
     const id = generate_uuid()
     const address = createConsumerAddressFrom(params)
     const filter = createConsumerFilterFrom(params)
     if (!address) throw new Error("Consumer must have an address")
 
-    const receiverLink = await AmqpConsumer.openReceiver(connection, address, id, filter)
+    const preSettled = params.preSettled ?? false
+    const receiverLink = await AmqpConsumer.openReceiver(connection, address, id, preSettled, filter)
     return new AmqpConsumer(id, connection, consumersList, receiverLink, params)
   }
 
@@ -85,6 +92,7 @@ export class AmqpConsumer implements Consumer {
     connection: Connection,
     address: string,
     consumerId: string,
+    preSettled: boolean,
     filter?: SourceFilter
   ): Promise<Receiver> {
     return openLink<Receiver>(
@@ -92,7 +100,7 @@ export class AmqpConsumer implements Consumer {
       ReceiverEvents.receiverOpen,
       ReceiverEvents.receiverError,
       connection.open_receiver.bind(connection),
-      getConsumerReceiverLinkConfigurationFrom(address, consumerId, filter)
+      getConsumerReceiverLinkConfigurationFrom(address, consumerId, preSettled, filter)
     )
   }
 
@@ -113,7 +121,9 @@ export class AmqpConsumer implements Consumer {
   start() {
     this.receiverLink.on(ReceiverEvents.message, (context: EventContext) => {
       if (context.message && context.delivery) {
-        const deliveryContext = new AmqpDeliveryContext(context.delivery, this.receiverLink)
+        const deliveryContext = this.params.preSettled
+          ? AmqpConsumer.PRE_SETTLED_DELIVERY_CONTEXT
+          : new AmqpDeliveryContext(context.delivery, this.receiverLink)
         this.params.messageHandler(deliveryContext, context.message)
       }
     })
