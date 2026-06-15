@@ -2,18 +2,24 @@ import { Message } from "rhea"
 import { AUTO_DELETE, DURABLE, EXCLUSIVE, isError, queueTypeFromString, Result } from "./utils.js"
 import { DeletedQueueInfo, QueueInfo } from "./queue.js"
 
-interface ResponseDecoder {
-  decodeFrom: (receivedMessage: Message, sentMessageId: string) => Result<unknown, Error>
+export interface ResponseDecoder<T> {
+  decodeFrom: (receivedMessage: Message, sentMessageId: string) => Result<T, Error>
 }
 
-export class CreateQueueResponseDecoder implements ResponseDecoder {
+function validateResponse(receivedMessage: Message, sentMessageId: string): Error | null {
+  if (isError(receivedMessage)) {
+    return new Error(`Message Error: ${receivedMessage.subject} ${JSON.stringify(receivedMessage.body)}`)
+  }
+  if (String(sentMessageId) !== String(receivedMessage.correlation_id)) {
+    return new Error(`Correlation mismatch: sent ${sentMessageId}, received ${receivedMessage.correlation_id}`)
+  }
+  return null
+}
+
+export class CreateQueueResponseDecoder implements ResponseDecoder<QueueInfo> {
   decodeFrom(receivedMessage: Message, sentMessageId: string): Result<QueueInfo, Error> {
-    if (isError(receivedMessage) || sentMessageId !== receivedMessage.correlation_id) {
-      return {
-        status: "error",
-        error: new Error(`Message Error: ${receivedMessage.subject}; ${receivedMessage.body}`),
-      }
-    }
+    const error = validateResponse(receivedMessage, sentMessageId)
+    if (error) return { status: "error", error }
 
     return {
       status: "ok",
@@ -35,11 +41,10 @@ export class CreateQueueResponseDecoder implements ResponseDecoder {
 
 export class GetQueueInfoResponseDecoder extends CreateQueueResponseDecoder {}
 
-export class DeleteQueueResponseDecoder implements ResponseDecoder {
+export class DeleteQueueResponseDecoder implements ResponseDecoder<DeletedQueueInfo> {
   decodeFrom(receivedMessage: Message, sentMessageId: string): Result<DeletedQueueInfo, Error> {
-    if (isError(receivedMessage) || sentMessageId !== receivedMessage.correlation_id) {
-      return { status: "error", error: new Error(`Message Error: ${receivedMessage.subject}`) }
-    }
+    const error = validateResponse(receivedMessage, sentMessageId)
+    if (error) return { status: "error", error }
 
     return {
       status: "ok",
@@ -51,16 +56,12 @@ export class DeleteQueueResponseDecoder implements ResponseDecoder {
   }
 }
 
-class EmptyBodyResponseDecoder implements ResponseDecoder {
+class EmptyBodyResponseDecoder implements ResponseDecoder<void> {
   decodeFrom(receivedMessage: Message, sentMessageId: string): Result<void, Error> {
-    if (isError(receivedMessage) || sentMessageId !== receivedMessage.correlation_id) {
-      return { status: "error", error: new Error(`Message Error: ${receivedMessage.subject}`) }
-    }
+    const error = validateResponse(receivedMessage, sentMessageId)
+    if (error) return { status: "error", error }
 
-    return {
-      status: "ok",
-      body: undefined,
-    }
+    return { status: "ok", body: undefined }
   }
 }
 

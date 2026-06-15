@@ -133,6 +133,34 @@ describe("Management", () => {
       })
     })
 
+    test("concurrent management calls do not produce race conditions", async () => {
+      const names = ["test-queue-1", "test-queue-2", "test-queue-3"]
+
+      const queues = await Promise.all(names.map((name) => management.declareQueue(name)))
+
+      await eventually(async () => {
+        for (let i = 0; i < names.length; i++) {
+          expect(queues[i].getInfo.name).to.eql(names[i])
+          expect(await existsQueue(names[i])).to.eql(true)
+        }
+      })
+    })
+
+    test("concurrent calls to different management operations do not produce race conditions", async () => {
+      const newToken = generateToken(username, 5)
+
+      const [queue, tokenResult] = await Promise.all([
+        management.declareQueue("test-queue-concurrent"),
+        management.refreshToken(newToken),
+      ])
+
+      expect(queue.getInfo.name).to.eql("test-queue-concurrent")
+      expect(tokenResult).to.eql(true)
+      await eventually(async () => {
+        expect(await existsQueue("test-queue-concurrent")).to.eql(true)
+      })
+    })
+
     test("get info of a queue through the management", async () => {
       await createQueue(queueName)
 

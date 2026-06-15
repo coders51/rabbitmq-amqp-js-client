@@ -101,9 +101,3 @@ export class Offset {
     return new Offset(OffsetType.timestamp, BigInt(date.getTime()))
   }
 }
-
-export async function wait(ms: number) {
-  return new Promise((res) => {
-    setTimeout(() => res(true), ms)
-  })
-}
