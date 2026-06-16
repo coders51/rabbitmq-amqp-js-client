@@ -54,3 +54,17 @@ export class AmqpDeliveryContext implements DeliveryContext {
     })
   }
 }
+
+export class PreSettledDeliveryContext implements DeliveryContext {
+  accept() {
+    throw new Error("Pre-settle ON, message is already disposed.")
+  }
+
+  discard() {
+    throw new Error("Pre-settle ON, message is already disposed.")
+  }
+
+  requeue() {
+    throw new Error("Pre-settle ON, message is already disposed.")
+  }
+}

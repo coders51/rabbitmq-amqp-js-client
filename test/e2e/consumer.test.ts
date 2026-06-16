@@ -448,6 +448,50 @@ describe("Consumer", () => {
     })
   })
 
+  test("pre-settled consumer can handle a message without settling", async () => {
+    const publisher = await connection.createPublisher({ queue: { name: queueName } })
+    const expectedBody = "ciao"
+    await publisher.publish(createAmqpMessage({ body: expectedBody }))
+    let received: string = ""
+
+    const consumer = await connection.createConsumer({
+      queue: { name: queueName },
+      preSettled: true,
+      messageHandler: (_context, message) => {
+        received = message.body
+      },
+    })
+    consumer.start()
+
+    await eventually(() => {
+      expect(received).to.be.eql(expectedBody)
+    })
+  })
+
+  test("pre-settled consumer context throws on settle attempt", async () => {
+    const publisher = await connection.createPublisher({ queue: { name: queueName } })
+    await publisher.publish(createAmqpMessage({ body: "ciao" }))
+    let error: Error | undefined
+
+    const consumer = await connection.createConsumer({
+      queue: { name: queueName },
+      preSettled: true,
+      messageHandler: (context) => {
+        try {
+          context.accept()
+        } catch (e) {
+          error = e as Error
+        }
+      },
+    })
+    consumer.start()
+
+    await eventually(() => {
+      expect(error).toBeDefined()
+      expect(error!.message).to.include("Pre-settle")
+    })
+  })
+
   test("consumer can requeue a message with annotations in a queue", async () => {
     let toRequeue = true
     const messages: Message[] = []
