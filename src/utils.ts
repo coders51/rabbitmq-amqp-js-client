@@ -49,6 +49,17 @@ export function isError(message: Message): boolean {
   )
 }
 
+export function isBrokerVersionAtLeast(
+  properties: { [x: string]: unknown } | undefined,
+  major: number,
+  minor: number
+): boolean {
+  const version = properties?.version
+  if (typeof version !== "string") return false
+  const [maj, min] = version.split(".").map(Number)
+  return maj > major || (maj === major && min >= minor)
+}
+
 export function queueTypeFromString(queueType: string): QueueType {
   switch (queueType) {
     case "classic":
