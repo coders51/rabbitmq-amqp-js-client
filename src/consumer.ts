@@ -41,10 +41,17 @@ export type StreamOptions = {
 
 export type SourceOptions = { stream: StreamOptions } | { queue: QueueOptions }
 
-export type CreateConsumerParams = SourceOptions & {
+export type QueueConsumerParams = SourceOptions & {
   preSettled?: boolean
   messageHandler: ConsumerMessageHandler
 }
+
+export type DirectReplyToConsumerParams = {
+  directReplyTo: true
+  messageHandler: ConsumerMessageHandler
+}
+
+export type CreateConsumerParams = QueueConsumerParams | DirectReplyToConsumerParams
 
 const getConsumerReceiverLinkConfigurationFrom = (
   address: string,
@@ -68,10 +75,26 @@ const getConsumerReceiverLinkConfigurationFrom = (
   },
 })
 
+const getDirectReplyToReceiverLinkConfiguration = (consumerId: string): ReceiverOptions => ({
+  snd_settle_mode: 1,
+  rcv_settle_mode: 0,
+  autoaccept: true,
+  autosettle: true,
+  name: consumerId,
+  source: {
+    address: null as unknown as string,
+    dynamic: true,
+    expiry_policy: "link-detach",
+    timeout: 0,
+    capabilities: ["rabbitmq:volatile-queue"],
+  },
+})
+
 export interface Consumer {
   start(): void
   close(): void
   get id(): string
+  get replyTo(): string | undefined
 }
 
 export class AmqpConsumer implements Consumer {
@@ -79,11 +102,17 @@ export class AmqpConsumer implements Consumer {
 
   static async createFrom(connection: Connection, consumersList: Map<string, Consumer>, params: CreateConsumerParams) {
     const id = generate_uuid()
-    const address = createConsumerAddressFrom(params)
-    const filter = createConsumerFilterFrom(params)
-    if (!address) throw new Error("Consumer must have an address")
 
-    const preSettled = params.preSettled ?? false
+    if ("directReplyTo" in params && params.directReplyTo) {
+      const receiverLink = await AmqpConsumer.openDirectReplyToReceiver(connection, id)
+      return new AmqpConsumer(id, connection, consumersList, receiverLink, params)
+    }
+
+    const sourceParams = params as QueueConsumerParams
+    const address = createConsumerAddressFrom(sourceParams)
+    const filter = createConsumerFilterFrom(sourceParams)
+    if (!address) throw new Error("Consumer must have an address")
+    const preSettled = sourceParams.preSettled ?? false
     const receiverLink = await AmqpConsumer.openReceiver(connection, address, id, preSettled, filter)
     return new AmqpConsumer(id, connection, consumersList, receiverLink, params)
   }
@@ -104,6 +133,16 @@ export class AmqpConsumer implements Consumer {
     )
   }
 
+  private static async openDirectReplyToReceiver(connection: Connection, consumerId: string): Promise<Receiver> {
+    return openLink<Receiver>(
+      connection,
+      ReceiverEvents.receiverOpen,
+      ReceiverEvents.receiverError,
+      connection.open_receiver.bind(connection),
+      getDirectReplyToReceiverLinkConfiguration(consumerId)
+    )
+  }
+
   constructor(
     private readonly _id: string,
     private readonly connection: Connection,
@@ -118,10 +157,16 @@ export class AmqpConsumer implements Consumer {
     return this._id
   }
 
+  get replyTo(): string | undefined {
+    return this.receiverLink.source?.address
+  }
+
   start() {
     this.receiverLink.on(ReceiverEvents.message, (context: EventContext) => {
       if (context.message && context.delivery) {
-        const deliveryContext = this.params.preSettled
+        const isPreSettled =
+          "directReplyTo" in this.params ? true : ((this.params as QueueConsumerParams).preSettled ?? false)
+        const deliveryContext = isPreSettled
           ? AmqpConsumer.PRE_SETTLED_DELIVERY_CONTEXT
           : new AmqpDeliveryContext(context.delivery, this.receiverLink)
         this.params.messageHandler(deliveryContext, context.message)
@@ -136,7 +181,7 @@ export class AmqpConsumer implements Consumer {
   }
 }
 
-function createConsumerFilterFrom(params: CreateConsumerParams): SourceFilter | undefined {
+function createConsumerFilterFrom(params: QueueConsumerParams): SourceFilter | undefined {
   if ("queue" in params) {
     return undefined
   }

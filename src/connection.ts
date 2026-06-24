@@ -5,6 +5,7 @@ import { AmqpPublisher, Publisher } from "./publisher.js"
 import { DestinationOptions } from "./message.js"
 import { AmqpConsumer, Consumer, CreateConsumerParams } from "./consumer.js"
 import { openRheaConnection } from "./rhea_wrapper.js"
+import { isBrokerVersionAtLeast } from "./utils.js"
 
 export interface Connection {
   close(): Promise<boolean>
@@ -51,11 +52,13 @@ export class AmqpConnection implements Connection {
       envParams.oauth ? () => bridge.getPassword() : undefined
     )
     const topologyManagement = await AmqpManagement.create(rheaConnection)
+    const isDirectReplyToSupported = isBrokerVersionAtLeast(rheaConnection.properties, 4, 2)
     return new AmqpConnection(
       rheaConnection,
       topologyManagement,
       envParams.oauth ? envParams.oauth.token : envParams.password,
-      bridge
+      bridge,
+      isDirectReplyToSupported
     )
   }
 
@@ -63,7 +66,8 @@ export class AmqpConnection implements Connection {
     private readonly connection: RheaConnection,
     private readonly topologyManagement: Management,
     private password: string,
-    bridge: PasswordBridge
+    bridge: PasswordBridge,
+    private readonly _isDirectReplyToSupported: boolean = false
   ) {
     bridge.register(() => this.getPassword())
   }
@@ -88,6 +92,9 @@ export class AmqpConnection implements Connection {
   }
 
   async createConsumer(params: CreateConsumerParams): Promise<Consumer> {
+    if ("directReplyTo" in params && params.directReplyTo && !this._isDirectReplyToSupported) {
+      throw new Error("Direct reply-to is not supported by this broker. RabbitMQ 4.2 or later is required.")
+    }
     const consumer = await AmqpConsumer.createFrom(this.connection, this._consumers, params)
     this._consumers.set(consumer.id, consumer)
     return consumer
