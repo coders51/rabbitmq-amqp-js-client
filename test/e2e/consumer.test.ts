@@ -6,6 +6,7 @@ import { Connection } from "../../src/connection.js"
 import { Queue } from "../../src/queue.js"
 import { Exchange } from "../../src/exchange.js"
 import { createAmqpMessage } from "../../src/message.js"
+import { DeliveryContext } from "../../src/delivery_context.js"
 import { Offset } from "../../src/utils.js"
 import { Message } from "rhea"
 
@@ -526,4 +527,103 @@ describe("Consumer", () => {
       expect(messages[1].message_annotations!["x-delivery-count"]).toEqual(1)
     })
   }, 15000)
+
+  test("consumer with initialCredits never holds more unsettled messages than its credits", async () => {
+    const publisher = await connection.createPublisher({ queue: { name: queueName } })
+    for (let i = 0; i < 20; i++) {
+      await publisher.publish(createAmqpMessage({ body: `message-${i}` }))
+    }
+    let received = 0
+    let settleImmediately = false
+    const pendingContexts: DeliveryContext[] = []
+
+    const consumer = await connection.createConsumer({
+      queue: { name: queueName },
+      initialCredits: 3,
+      messageHandler: (context) => {
+        received++
+        if (settleImmediately) {
+          context.accept()
+          return
+        }
+        pendingContexts.push(context)
+      },
+    })
+    consumer.start()
+
+    await eventually(() => {
+      expect(received).to.be.eql(3)
+    })
+    await wait(1000)
+    expect(received).to.be.eql(3)
+
+    settleImmediately = true
+    pendingContexts.splice(0).forEach((context) => context.accept())
+
+    await eventually(async () => {
+      expect(received).to.be.eql(20)
+      const queueInfo = await management.getQueueInfo(queueName)
+      expect(queueInfo.getInfo.messageCount).eql(0)
+    })
+  }, 15000)
+
+  test("consumer with initialCredits keeps consuming when messages are discarded or requeued", async () => {
+    const publisher = await connection.createPublisher({ queue: { name: discardQueueName } })
+    for (let i = 0; i < 5; i++) {
+      await publisher.publish(createAmqpMessage({ body: `message-${i}` }))
+    }
+    let received = 0
+
+    const consumer = await connection.createConsumer({
+      queue: { name: discardQueueName },
+      initialCredits: 1,
+      messageHandler: (context) => {
+        received++
+        context.discard()
+      },
+    })
+    consumer.start()
+
+    await eventually(async () => {
+      expect(received).to.be.eql(5)
+      const deadLetterInfo = await management.getQueueInfo(deadLetterQueueName)
+      expect(deadLetterInfo.getInfo.messageCount).eql(5)
+    })
+  }, 15000)
+
+  test("pre-settled consumer with initialCredits keeps consuming without explicit settlement", async () => {
+    const publisher = await connection.createPublisher({ queue: { name: queueName } })
+    for (let i = 0; i < 5; i++) {
+      await publisher.publish(createAmqpMessage({ body: `message-${i}` }))
+    }
+    let received = 0
+
+    const consumer = await connection.createConsumer({
+      queue: { name: queueName },
+      preSettled: true,
+      initialCredits: 2,
+      messageHandler: () => {
+        received++
+      },
+    })
+    consumer.start()
+
+    await eventually(() => {
+      expect(received).to.be.eql(5)
+    })
+  })
+
+  test("createConsumer throws when initialCredits is not a positive integer", async () => {
+    for (const initialCredits of [0, -1, 1.5]) {
+      await expect(
+        connection.createConsumer({
+          queue: { name: queueName },
+          initialCredits,
+          messageHandler: () => {
+            return
+          },
+        })
+      ).rejects.toThrow("initialCredits must be a positive integer")
+    }
+  })
 })

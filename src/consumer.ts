@@ -43,6 +43,7 @@ export type SourceOptions = { stream: StreamOptions } | { queue: QueueOptions }
 
 export type QueueConsumerParams = SourceOptions & {
   preSettled?: boolean
+  initialCredits?: number
   messageHandler: ConsumerMessageHandler
 }
 
@@ -57,8 +58,11 @@ const getConsumerReceiverLinkConfigurationFrom = (
   address: string,
   consumerId: string,
   preSettled: boolean,
-  filter?: SourceFilter
+  filter?: SourceFilter,
+  initialCredits?: number
 ): SenderOptions | ReceiverOptions => ({
+  // When credits are managed manually, disable rhea's automatic credit window
+  ...(initialCredits !== undefined ? { credit_window: 0 } : {}),
   snd_settle_mode: preSettled ? 1 : 0,
   rcv_settle_mode: 0,
   autoaccept: preSettled,
@@ -113,7 +117,11 @@ export class AmqpConsumer implements Consumer {
     const filter = createConsumerFilterFrom(sourceParams)
     if (!address) throw new Error("Consumer must have an address")
     const preSettled = sourceParams.preSettled ?? false
-    const receiverLink = await AmqpConsumer.openReceiver(connection, address, id, preSettled, filter)
+    const initialCredits = sourceParams.initialCredits
+    if (initialCredits !== undefined && (!Number.isInteger(initialCredits) || initialCredits <= 0)) {
+      throw new Error("initialCredits must be a positive integer")
+    }
+    const receiverLink = await AmqpConsumer.openReceiver(connection, address, id, preSettled, filter, initialCredits)
     return new AmqpConsumer(id, connection, consumersList, receiverLink, params)
   }
 
@@ -122,14 +130,15 @@ export class AmqpConsumer implements Consumer {
     address: string,
     consumerId: string,
     preSettled: boolean,
-    filter?: SourceFilter
+    filter?: SourceFilter,
+    initialCredits?: number
   ): Promise<Receiver> {
     return openLink<Receiver>(
       connection,
       ReceiverEvents.receiverOpen,
       ReceiverEvents.receiverError,
       connection.open_receiver.bind(connection),
-      getConsumerReceiverLinkConfigurationFrom(address, consumerId, preSettled, filter)
+      getConsumerReceiverLinkConfigurationFrom(address, consumerId, preSettled, filter, initialCredits)
     )
   }
 
@@ -168,10 +177,30 @@ export class AmqpConsumer implements Consumer {
           "directReplyTo" in this.params ? true : ((this.params as QueueConsumerParams).preSettled ?? false)
         const deliveryContext = isPreSettled
           ? AmqpConsumer.PRE_SETTLED_DELIVERY_CONTEXT
-          : new AmqpDeliveryContext(context.delivery, this.receiverLink)
+          : new AmqpDeliveryContext(context.delivery, this.receiverLink, this.createOnSettled())
         this.params.messageHandler(deliveryContext, context.message)
+        if (isPreSettled) this.replenishCredit()
       }
     })
+    if (this.initialCredits !== undefined) this.receiverLink.add_credit(this.initialCredits)
+  }
+
+  private get initialCredits(): number | undefined {
+    return "initialCredits" in this.params ? this.params.initialCredits : undefined
+  }
+
+  private createOnSettled(): (() => void) | undefined {
+    if (this.initialCredits === undefined) return undefined
+    let alreadySettled = false
+    return () => {
+      if (alreadySettled) return
+      alreadySettled = true
+      this.replenishCredit()
+    }
+  }
+
+  private replenishCredit() {
+    if (this.initialCredits !== undefined && this.receiverLink.is_open()) this.receiverLink.add_credit(1)
   }
 
   close() {
