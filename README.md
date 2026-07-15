@@ -28,6 +28,26 @@ The client is distributed via **npm**:
 
 Inside the [_examples_](./examples/) folder you can find a node project that shows how to use the library.
 
+### Connecting to a virtual host
+
+By default the client connects to the default virtual host `/`. Set the optional `virtualHost` parameter to connect to a different one:
+
+```js
+const environment = rabbit.createEnvironment({
+  host: "localhost",
+  port: 5672,
+  username: "guest",
+  password: "guest",
+  virtualHost: "my-vhost",
+})
+```
+
+RabbitMQ selects the virtual host of an AMQP 1.0 connection through the `hostname` field of the `open` frame, using the `vhost:<name>` convention (see the [RabbitMQ AMQP 1.0 documentation](https://www.rabbitmq.com/docs/amqp#virtual-hosts)).
+
+Over TLS this does not affect the server name sent for SNI: `virtualHost` only sets the `open` frame `hostname`, while the TLS server name is still derived from `host`.
+
+When the virtual host does not exist, or the user has no permission on it, the broker closes the socket without sending an AMQP error frame. The promise returned by `createConnection` is rejected in that case, so the connection attempt fails rather than hanging.
+
 ## Resources
 
 - [Reference library for AMQP 1.0](https://github.com/amqp/rhea)

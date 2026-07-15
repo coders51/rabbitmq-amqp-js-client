@@ -27,6 +27,7 @@ export type EnvironmentParams = {
   port: number
   username: string
   password: string
+  virtualHost?: string
   webSocket?: WebSocketParams
   oauth?: OauthParams
   tls?: TlsParams

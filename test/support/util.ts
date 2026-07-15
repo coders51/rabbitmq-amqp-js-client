@@ -384,3 +384,40 @@ function randomString(length: number) {
   }
   return randomString
 }
+
+export async function createVhost(vhostName: string): Promise<void> {
+  await got.put(`http://${host}:${managementPort}/api/vhosts/${encodeURIComponent(vhostName)}`, {
+    username,
+    password,
+  })
+  await got.put(
+    `http://${host}:${managementPort}/api/permissions/${encodeURIComponent(vhostName)}/${encodeURIComponent(username)}`,
+    {
+      username,
+      password,
+      json: { configure: ".*", write: ".*", read: ".*" },
+    }
+  )
+}
+
+export async function deleteVhost(vhostName: string): Promise<void> {
+  await got.delete(`http://${host}:${managementPort}/api/vhosts/${encodeURIComponent(vhostName)}`, {
+    username,
+    password,
+  })
+}
+
+export async function existsQueueInVhost(queueName: string, vhostName: string): Promise<boolean> {
+  const response = await got.get(
+    `http://${host}:${managementPort}/api/queues/${encodeURIComponent(vhostName)}/${queueName}`,
+    {
+      username,
+      password,
+      throwHttpErrors: false,
+    }
+  )
+
+  if (!response.ok && response.statusCode !== 404) throw new Error(`HTTPError: ${inspect(response)}`)
+
+  return response.ok
+}

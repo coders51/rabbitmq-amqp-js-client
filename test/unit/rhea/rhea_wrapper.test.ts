@@ -98,3 +98,52 @@ describe("buildConnectParams: WebSocket + OAuth token refresh", () => {
     expect(reconnectDetails.password).toBe("refreshed-token")
   })
 })
+
+describe("buildConnectParams: virtual host", () => {
+  const baseParams: EnvironmentParams = {
+    host: "broker.example.com",
+    port: 5672,
+    username: "user",
+    password: "pass",
+  }
+
+  test("virtualHost is mapped to the open frame hostname using the vhost:<name> convention", () => {
+    const params = buildConnectParams({ ...baseParams, virtualHost: "my-vhost" })
+
+    expect(params.hostname).toBe("vhost:my-vhost")
+  })
+
+  test("hostname is not set when virtualHost is not provided", () => {
+    const params = buildConnectParams(baseParams)
+
+    expect(params.hostname).toBeUndefined()
+  })
+
+  test("virtualHost is mapped when using OAuth", () => {
+    const envParams: EnvironmentParams = { ...baseParams, oauth: { token: "token" }, virtualHost: "my-vhost" }
+
+    const params = buildConnectParams(envParams, undefined, () => "token")
+
+    expect(params.hostname).toBe("vhost:my-vhost")
+  })
+
+  test("virtualHost is mapped when using WebSocket", () => {
+    const envParams: EnvironmentParams = {
+      ...baseParams,
+      webSocket: { implementation: wsImpl },
+      virtualHost: "my-vhost",
+    }
+
+    const params = buildConnectParams(envParams)
+
+    expect(params.hostname).toBe("vhost:my-vhost")
+  })
+
+  test("virtualHost does not interfere with TLS SNI (rhea derives servername from host, not hostname)", () => {
+    const params = buildConnectParams({ ...baseParams, tls: {}, virtualHost: "my-vhost" })
+
+    expect(params.hostname).toBe("vhost:my-vhost")
+    expect(params.transport).toBe("tls")
+    expect(Object.hasOwn(params, "servername")).toBe(false)
+  })
+})
