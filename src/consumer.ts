@@ -191,16 +191,19 @@ function createConsumerFilterFrom(params: QueueConsumerParams): SourceFilter | u
 
   const filters: Dictionary<string | bigint | boolean | string[] | Typed> = {}
   if (params.stream.offset) {
-    filters[STREAM_OFFSET_SPEC] = params.stream.offset.toValue()
+    filters[STREAM_OFFSET_SPEC] = types.wrap_described(params.stream.offset.toValue(), STREAM_OFFSET_SPEC)
   }
   if (params.stream.filterValues) {
-    filters[STREAM_FILTER_SPEC] = params.stream.filterValues
+    filters[STREAM_FILTER_SPEC] = types.wrap_described(params.stream.filterValues, STREAM_FILTER_SPEC)
   }
   if (params.stream.sqlFilter) {
     filters[STREAM_FILTER_SQL] = types.wrap_described(params.stream.sqlFilter, 0x120)
   }
   if (params.stream.matchUnfiltered) {
-    filters[STREAM_FILTER_MATCH_UNFILTERED] = params.stream.matchUnfiltered
+    filters[STREAM_FILTER_MATCH_UNFILTERED] = types.wrap_described(
+      params.stream.matchUnfiltered,
+      STREAM_FILTER_MATCH_UNFILTERED
+    )
   }
   if (params.stream.messagePropertiesFilter) {
     const symbolicMap = types.wrap_symbolic_map(params.stream.messagePropertiesFilter)
