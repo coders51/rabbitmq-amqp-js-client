@@ -109,6 +109,7 @@ export async function createQueue(queue: string): Promise<boolean> {
     },
     json: {
       name: queue,
+      durable: true,
     },
     throwHttpErrors: false,
   })
