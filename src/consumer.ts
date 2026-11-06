@@ -39,7 +39,11 @@ export type StreamOptions = {
   matchUnfiltered?: boolean
 }
 
-export type SourceOptions = { stream: StreamOptions } | { queue: QueueOptions }
+export type ConsumerPriority = number
+
+export type SourceOptions =
+  | { stream: StreamOptions; priority?: never }
+  | { queue: QueueOptions; priority?: ConsumerPriority }
 
 export type QueueConsumerParams = SourceOptions & {
   preSettled?: boolean
@@ -53,12 +57,18 @@ export type DirectReplyToConsumerParams = {
 
 export type CreateConsumerParams = QueueConsumerParams | DirectReplyToConsumerParams
 
-const getConsumerReceiverLinkConfigurationFrom = (
+const CONSUMER_PRIORITY_PROPERTY = "rabbitmq:priority"
+const INT32_MIN = -(2 ** 31)
+const INT32_MAX = 2 ** 31 - 1
+
+export const getConsumerReceiverLinkConfigurationFrom = (
   address: string,
   consumerId: string,
   preSettled: boolean,
-  filter?: SourceFilter
+  filter?: SourceFilter,
+  priority?: ConsumerPriority
 ): SenderOptions | ReceiverOptions => ({
+  properties: createLinkPropertiesFrom(priority),
   snd_settle_mode: preSettled ? 1 : 0,
   rcv_settle_mode: 0,
   autoaccept: preSettled,
@@ -113,7 +123,8 @@ export class AmqpConsumer implements Consumer {
     const filter = createConsumerFilterFrom(sourceParams)
     if (!address) throw new Error("Consumer must have an address")
     const preSettled = sourceParams.preSettled ?? false
-    const receiverLink = await AmqpConsumer.openReceiver(connection, address, id, preSettled, filter)
+    const priority = validateConsumerPriority(sourceParams.priority)
+    const receiverLink = await AmqpConsumer.openReceiver(connection, address, id, preSettled, filter, priority)
     return new AmqpConsumer(id, connection, consumersList, receiverLink, params)
   }
 
@@ -122,14 +133,15 @@ export class AmqpConsumer implements Consumer {
     address: string,
     consumerId: string,
     preSettled: boolean,
-    filter?: SourceFilter
+    filter?: SourceFilter,
+    priority?: ConsumerPriority
   ): Promise<Receiver> {
     return openLink<Receiver>(
       connection,
       ReceiverEvents.receiverOpen,
       ReceiverEvents.receiverError,
       connection.open_receiver.bind(connection),
-      getConsumerReceiverLinkConfigurationFrom(address, consumerId, preSettled, filter)
+      getConsumerReceiverLinkConfigurationFrom(address, consumerId, preSettled, filter, priority)
     )
   }
 
@@ -179,6 +191,19 @@ export class AmqpConsumer implements Consumer {
     if (this.receiverLink.is_open()) this.receiverLink.close()
     if (this.consumersList.has(this._id)) this.consumersList.delete(this._id)
   }
+}
+
+function validateConsumerPriority(priority?: ConsumerPriority): ConsumerPriority | undefined {
+  if (priority === undefined) return undefined
+  if (!Number.isInteger(priority) || priority < INT32_MIN || priority > INT32_MAX) {
+    throw new Error(`Consumer priority must be a 32-bit signed integer, got ${priority}`)
+  }
+  return priority
+}
+
+function createLinkPropertiesFrom(priority?: ConsumerPriority): Dictionary<Typed> | undefined {
+  if (priority === undefined) return undefined
+  return { [CONSUMER_PRIORITY_PROPERTY]: types.wrap_int(priority) }
 }
 
 function createConsumerFilterFrom(params: QueueConsumerParams): SourceFilter | undefined {
