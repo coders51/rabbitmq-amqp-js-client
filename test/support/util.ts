@@ -4,6 +4,7 @@ import { AssertionError } from "assertion-error"
 import { expect } from "vitest"
 import { createSecretKey } from "crypto"
 import * as jwt from "jsonwebtoken"
+import { isBrokerVersionAtLeast } from "../../src/utils.js"
 
 export type ConnectionInfoResponse = {
   name: string
@@ -45,6 +46,15 @@ export const managementPort = 15672
 export const vhost = encodeURIComponent("/")
 export const username = process.env.RABBITMQ_USER ?? "rabbit"
 export const password = process.env.RABBITMQ_PASSWORD ?? "rabbit"
+
+export async function brokerVersionAtLeast(major: number, minor: number): Promise<boolean> {
+  const ret = await got.get<{ rabbitmq_version: string }>(`http://${host}:${managementPort}/api/overview`, {
+    username,
+    password,
+    responseType: "json",
+  })
+  return isBrokerVersionAtLeast({ version: ret.body.rabbitmq_version }, major, minor)
+}
 
 export async function getConnections(): Promise<ConnectionInfoResponse[]> {
   const ret = await got.get<ConnectionInfoResponse[]>(`http://${host}:${managementPort}/api/connections`, {
