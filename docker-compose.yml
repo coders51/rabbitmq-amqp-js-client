@@ -1,6 +1,6 @@
 services:
   rabbitmq-js-client:
-    image: rabbitmq:4.2-management
+    image: rabbitmq:4.3-management
     container_name: rabbitmq-js-client
     restart: unless-stopped
     hostname: "rabbitmq"
