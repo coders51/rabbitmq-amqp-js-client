@@ -10,6 +10,8 @@ This library is meant to be used with RabbitMQ `4.x`. </br>
 
 - [Getting started](#getting-started)
 
+- [Consumer flow control](#consumer-flow-control)
+
 - [Resources](#resources)
 
 - [Connection recovery](#connection-recovery)
@@ -27,6 +29,30 @@ The client is distributed via **npm**:
 ## Getting started
 
 Inside the [_examples_](./examples/) folder you can find a node project that shows how to use the library.
+
+## Consumer flow control
+
+By default the client relies on [rhea](https://github.com/amqp/rhea)'s credit window (1000 credits), so up to 1000
+messages can be delivered to a consumer before any of them is settled. If your consumers process messages slowly, you
+can bound the number of unsettled messages held by a consumer with `initialCredits`, similar to `basic.qos` (prefetch)
+in AMQP 0.9.1 and to `initialCredits` in the
+[other RabbitMQ AMQP 1.0 clients](https://www.rabbitmq.com/client-libraries/amqp-client-libraries):
+
+```typescript
+const consumer = await connection.createConsumer({
+  queue: { name: "my-queue" },
+  initialCredits: 10, // at most 10 unsettled messages delivered to this consumer
+  messageHandler: (context, message) => {
+    // ... process the message ...
+    context.accept() // settling the message grants one more credit to the broker
+  },
+})
+consumer.start()
+```
+
+Every time a message is settled (`accept`, `discard` or `requeue`) one credit is granted back to the broker, so the
+consumer never holds more than `initialCredits` unsettled messages. For pre-settled consumers (`preSettled: true`)
+messages are settled on arrival, so `initialCredits` bounds the number of in-flight messages instead.
 
 ## Resources
 
