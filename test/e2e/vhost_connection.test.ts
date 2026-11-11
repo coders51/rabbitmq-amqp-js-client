@@ -73,4 +73,18 @@ describe("Connecting to a virtual host", () => {
 
     await expect(connecting).rejects.toThrow()
   })
+
+  test("connecting to a non-existent virtual host fails even when reconnection is enabled", async () => {
+    environment = createEnvironment({
+      host,
+      port,
+      username,
+      password,
+      virtualHost: "this-vhost-does-not-exist",
+    })
+
+    const connecting = environment.createConnection()
+
+    await expect(connecting).rejects.toThrow()
+  })
 })
