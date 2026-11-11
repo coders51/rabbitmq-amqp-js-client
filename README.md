@@ -12,6 +12,8 @@ This library is meant to be used with RabbitMQ `4.x`. </br>
 
 - [Resources](#resources)
 
+- [Connection recovery](#connection-recovery)
+
 - [Roadmap](#roadmap)
 
 ## Installing via npm
@@ -32,6 +34,12 @@ Inside the [_examples_](./examples/) folder you can find a node project that sho
 - [AMQP 1.0 documentation](https://www.rabbitmq.com/docs/amqp)
 - [AMQP 1.0 over WebSocket](https://www.rabbitmq.com/blog/2025/04/16/amqp-websocket) (blog post)
 - [.Net client](https://github.com/rabbitmq/rabbitmq-amqp-dotnet-client) (reference implementation)
+
+## Connection recovery
+
+By default a connection reconnects automatically when it is lost; this can be tuned with the `reconnect`, `initialReconnectDelay`, `maxReconnectDelay` and `reconnectLimit` options of `createConnection`.
+
+Automatic reconnection only applies to a connection that has been opened: when the first attempt fails, for example because the broker is not reachable, the promise returned by `createConnection` is rejected without retrying, and it is up to the application to try again. This is the same behaviour as the other [RabbitMQ AMQP 1.0 clients](https://www.rabbitmq.com/client-libraries/amqp-client-libraries).
 
 ## Roadmap
 

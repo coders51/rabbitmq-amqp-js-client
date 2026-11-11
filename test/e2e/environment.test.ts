@@ -75,4 +75,12 @@ describe("Environment", () => {
       expect(await numberOfConnections()).to.eql(1)
     })
   }, 10000)
+
+  test("a connection that cannot be opened fails without retrying, even with reconnect enabled", async () => {
+    const unreachableEnvironment = createEnvironment({ host, port: 5999, username, password })
+
+    await expect(unreachableEnvironment.createConnection({ reconnect: true })).rejects.toBeDefined()
+
+    await unreachableEnvironment.close()
+  })
 })

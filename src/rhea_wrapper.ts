@@ -2,6 +2,7 @@ import {
   Connection,
   ConnectionEvents,
   ConnectionOptions,
+  EventContext,
   create_container,
   Receiver,
   ReceiverEvents,
@@ -23,14 +24,22 @@ export async function openRheaConnection(
 ): Promise<RheaConnection> {
   return new Promise((res, rej) => {
     const container = create_container()
+    const connection = container.connect(buildConnectParams(envParams, connParams, getOauthPassword))
+    const reconnect = connection.options.reconnect
+    connection.options.reconnect = false
+
+    const onDisconnected = (context: EventContext) => {
+      return rej(context.error ?? new Error("Connection disconnected"))
+    }
+    container.once(ConnectionEvents.disconnected, onDisconnected)
     container.once(ConnectionEvents.connectionOpen, (context) => {
+      container.removeListener(ConnectionEvents.disconnected, onDisconnected)
+      context.connection.options.reconnect = reconnect
       return res(context.connection)
     })
     container.once(ConnectionEvents.connectionError, (context) => {
       return rej(context.error ?? new Error("Connection error occurred"))
     })
-
-    container.connect(buildConnectParams(envParams, connParams, getOauthPassword))
   })
 }
 
