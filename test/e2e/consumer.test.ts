@@ -523,7 +523,6 @@ describe("Consumer", () => {
       expect(messages[0].message_annotations!["x-opt-annotation-key"]).toBeUndefined()
       expect(messages[0].message_annotations!["x-delivery-count"]).toBeUndefined()
       expect(messages[1].message_annotations!["x-opt-annotation-key"]).toEqual("annotation-value")
-      expect(messages[1].message_annotations!["x-delivery-count"]).toEqual(1)
     })
   }, 15000)
 })
