@@ -9,6 +9,7 @@ import { createAmqpMessage } from "../../src/message.js"
 import { DeliveryContext } from "../../src/delivery_context.js"
 import { Offset } from "../../src/utils.js"
 import { Message } from "rhea"
+import { createTcpProxy } from "../support/tcp_proxy.js"
 
 describe("Consumer", () => {
   let environment: Environment
@@ -626,4 +627,90 @@ describe("Consumer", () => {
       ).rejects.toThrow("initialCredits must be a positive integer")
     }
   })
+
+  test("consumer with initialCredits keeps consuming after a reconnection", async () => {
+    const proxy = await createTcpProxy(host, port)
+    const proxiedEnvironment = createEnvironment({ host: "localhost", port: proxy.port, username, password })
+    try {
+      const proxiedConnection = await proxiedEnvironment.createConnection()
+      let received = 0
+      const consumer = await proxiedConnection.createConsumer({
+        queue: { name: queueName },
+        initialCredits: 2,
+        messageHandler: (context) => {
+          received++
+          context.accept()
+        },
+      })
+      consumer.start()
+
+      proxy.dropConnections()
+      const publisher = await connection.createPublisher({ queue: { name: queueName } })
+      for (let i = 0; i < 5; i++) {
+        await publisher.publish(createAmqpMessage({ body: `message-${i}` }))
+      }
+
+      await eventually(() => {
+        expect(received).to.be.eql(5)
+      }, 10000)
+    } finally {
+      await proxiedEnvironment.close()
+      await proxy.close()
+    }
+  }, 15000)
+
+  test("pre-settled consumer with initialCredits keeps consuming after a reconnection", async () => {
+    const proxy = await createTcpProxy(host, port)
+    const proxiedEnvironment = createEnvironment({ host: "localhost", port: proxy.port, username, password })
+    try {
+      const proxiedConnection = await proxiedEnvironment.createConnection()
+      let received = 0
+      const consumer = await proxiedConnection.createConsumer({
+        queue: { name: queueName },
+        preSettled: true,
+        initialCredits: 2,
+        messageHandler: () => {
+          received++
+        },
+      })
+      consumer.start()
+
+      proxy.dropConnections()
+      const publisher = await connection.createPublisher({ queue: { name: queueName } })
+      for (let i = 0; i < 5; i++) {
+        await publisher.publish(createAmqpMessage({ body: `message-${i}` }))
+      }
+
+      await eventually(() => {
+        expect(received).to.be.eql(5)
+      }, 10000)
+    } finally {
+      await proxiedEnvironment.close()
+      await proxy.close()
+    }
+  }, 15000)
+
+  test("starting a consumer with initialCredits twice does not grant more credits", async () => {
+    const publisher = await connection.createPublisher({ queue: { name: queueName } })
+    for (let i = 0; i < 5; i++) {
+      await publisher.publish(createAmqpMessage({ body: `message-${i}` }))
+    }
+    let received = 0
+
+    const consumer = await connection.createConsumer({
+      queue: { name: queueName },
+      initialCredits: 2,
+      messageHandler: () => {
+        received++
+      },
+    })
+    consumer.start()
+    consumer.start()
+
+    await eventually(() => {
+      expect(received).to.be.eql(2)
+    })
+    await wait(1000)
+    expect(received).to.be.eql(2)
+  }, 15000)
 })

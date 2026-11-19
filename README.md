@@ -64,15 +64,19 @@ const consumer = await connection.createConsumer({
   initialCredits: 10, // at most 10 unsettled messages delivered to this consumer
   messageHandler: (context, message) => {
     // ... process the message ...
-    context.accept() // settling the message grants one more credit to the broker
+    context.accept() // settled messages give their credit back to the broker
   },
 })
 consumer.start()
 ```
 
-Every time a message is settled (`accept`, `discard` or `requeue`) one credit is granted back to the broker, so the
-consumer never holds more than `initialCredits` unsettled messages. For pre-settled consumers (`preSettled: true`)
-messages are settled on arrival, so `initialCredits` bounds the number of in-flight messages instead.
+Settled messages (`accept`, `discard` or `requeue`) give their credit back to the broker in batches, like the other
+RabbitMQ AMQP 1.0 clients, so the consumer never holds more than `initialCredits` unsettled messages. After an automatic
+reconnection the consumer starts again with `initialCredits` credits.
+
+For pre-settled consumers (`preSettled: true`) messages are settled by the broker, so their credit is given back as they
+are delivered to the `messageHandler`. In this case `initialCredits` limits how many messages the client buffers, not
+how many asynchronous handlers are running at the same time.
 
 ## Resources
 
