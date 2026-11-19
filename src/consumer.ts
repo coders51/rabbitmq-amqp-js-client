@@ -14,6 +14,8 @@ import {
 } from "rhea"
 import {
   Offset,
+  OffsetType,
+  bigintTo64BitBuffer,
   SourceFilter,
   STREAM_FILTER_MATCH_UNFILTERED,
   STREAM_FILTER_SPEC,
@@ -287,7 +289,14 @@ function createLinkPropertiesFrom(priority?: ConsumerPriority): Dictionary<Typed
   return { [CONSUMER_PRIORITY_PROPERTY]: types.wrap_int(priority) }
 }
 
-function createConsumerFilterFrom(params: QueueConsumerParams): SourceFilter | undefined {
+function toOffsetFilterValue(offset: Offset): string | Typed {
+  const value = offset.toValue()
+  if (typeof value === "string") return value
+  const buffer = bigintTo64BitBuffer(value)
+  return offset.type === OffsetType.timestamp ? types.wrap_timestamp(buffer) : types.wrap_ulong(buffer)
+}
+
+export function createConsumerFilterFrom(params: QueueConsumerParams): SourceFilter | undefined {
   if ("queue" in params) {
     return undefined
   }
@@ -297,7 +306,7 @@ function createConsumerFilterFrom(params: QueueConsumerParams): SourceFilter | u
 
   const filters: Dictionary<string | bigint | boolean | string[] | Typed> = {}
   if (params.stream.offset) {
-    filters[STREAM_OFFSET_SPEC] = types.wrap_described(params.stream.offset.toValue(), STREAM_OFFSET_SPEC)
+    filters[STREAM_OFFSET_SPEC] = types.wrap_described(toOffsetFilterValue(params.stream.offset), STREAM_OFFSET_SPEC)
   }
   if (params.stream.filterValues) {
     filters[STREAM_FILTER_SPEC] = types.wrap_described(params.stream.filterValues, STREAM_FILTER_SPEC)
