@@ -39,6 +39,22 @@ class PasswordBridge {
   }
 }
 
+export type BrokerFeatures = {
+  directReplyTo: boolean
+  consumerPriority: boolean
+}
+
+const NO_BROKER_FEATURES: BrokerFeatures = { directReplyTo: false, consumerPriority: false }
+
+export function checkConsumerFeaturesSupported(params: CreateConsumerParams, features: BrokerFeatures) {
+  if ("directReplyTo" in params && params.directReplyTo && !features.directReplyTo) {
+    throw new Error("Direct reply-to is not supported by this broker. RabbitMQ 4.2 or later is required.")
+  }
+  if ("priority" in params && params.priority !== undefined && !features.consumerPriority) {
+    throw new Error("Consumer priority is not supported by this broker. RabbitMQ 4.3 or later is required.")
+  }
+}
+
 export class AmqpConnection implements Connection {
   private _publishers: Map<string, Publisher> = new Map<string, Publisher>()
   private _consumers: Map<string, Consumer> = new Map<string, Consumer>()
@@ -52,13 +68,16 @@ export class AmqpConnection implements Connection {
       envParams.oauth ? () => bridge.getPassword() : undefined
     )
     const topologyManagement = await AmqpManagement.create(rheaConnection)
-    const isDirectReplyToSupported = isBrokerVersionAtLeast(rheaConnection.properties, 4, 2)
+    const features: BrokerFeatures = {
+      directReplyTo: isBrokerVersionAtLeast(rheaConnection.properties, 4, 2),
+      consumerPriority: isBrokerVersionAtLeast(rheaConnection.properties, 4, 3),
+    }
     return new AmqpConnection(
       rheaConnection,
       topologyManagement,
       envParams.oauth ? envParams.oauth.token : envParams.password,
       bridge,
-      isDirectReplyToSupported
+      features
     )
   }
 
@@ -67,7 +86,7 @@ export class AmqpConnection implements Connection {
     private readonly topologyManagement: Management,
     private password: string,
     bridge: PasswordBridge,
-    private readonly _isDirectReplyToSupported: boolean = false
+    private readonly features: BrokerFeatures = NO_BROKER_FEATURES
   ) {
     bridge.register(() => this.getPassword())
   }
@@ -92,9 +111,7 @@ export class AmqpConnection implements Connection {
   }
 
   async createConsumer(params: CreateConsumerParams): Promise<Consumer> {
-    if ("directReplyTo" in params && params.directReplyTo && !this._isDirectReplyToSupported) {
-      throw new Error("Direct reply-to is not supported by this broker. RabbitMQ 4.2 or later is required.")
-    }
+    checkConsumerFeaturesSupported(params, this.features)
     const consumer = await AmqpConsumer.createFrom(this.connection, this._consumers, params)
     this._consumers.set(consumer.id, consumer)
     return consumer
