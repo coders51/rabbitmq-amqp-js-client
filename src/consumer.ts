@@ -43,6 +43,7 @@ export type SourceOptions = { stream: StreamOptions } | { queue: QueueOptions }
 
 export type QueueConsumerParams = SourceOptions & {
   preSettled?: boolean
+  initialCredits?: number
   messageHandler: ConsumerMessageHandler
 }
 
@@ -53,12 +54,27 @@ export type DirectReplyToConsumerParams = {
 
 export type CreateConsumerParams = QueueConsumerParams | DirectReplyToConsumerParams
 
+const buildCreditWindow = (preSettled: boolean, initialCredits?: number) => {
+  if (!initialCredits) return {}
+  return { credit_window: preSettled ? initialCredits : 0 }
+}
+
+const isInvalidInitialCredits = (initialCredits?: number) =>
+  typeof initialCredits === "number" && (!Number.isInteger(initialCredits) || initialCredits <= 0)
+
+const remainingCredit = (credits: number, unsettledCount: number, settledCount: number) =>
+  credits - unsettledCount - settledCount
+
+const shouldReturnSettledCredits = (settledCount: number, remaining: number) => settledCount >= remaining
+
 const getConsumerReceiverLinkConfigurationFrom = (
   address: string,
   consumerId: string,
   preSettled: boolean,
-  filter?: SourceFilter
+  filter?: SourceFilter,
+  initialCredits?: number
 ): SenderOptions | ReceiverOptions => ({
+  ...buildCreditWindow(preSettled, initialCredits),
   snd_settle_mode: preSettled ? 1 : 0,
   rcv_settle_mode: 0,
   autoaccept: preSettled,
@@ -99,6 +115,10 @@ export interface Consumer {
 
 export class AmqpConsumer implements Consumer {
   private static readonly PRE_SETTLED_DELIVERY_CONTEXT = new PreSettledDeliveryContext()
+  private started = false
+  private linkNumber = 0
+  private unsettledCount = 0
+  private settledSinceLastReturn = 0
 
   static async createFrom(connection: Connection, consumersList: Map<string, Consumer>, params: CreateConsumerParams) {
     const id = generate_uuid()
@@ -113,7 +133,11 @@ export class AmqpConsumer implements Consumer {
     const filter = createConsumerFilterFrom(sourceParams)
     if (!address) throw new Error("Consumer must have an address")
     const preSettled = sourceParams.preSettled ?? false
-    const receiverLink = await AmqpConsumer.openReceiver(connection, address, id, preSettled, filter)
+    const initialCredits = sourceParams.initialCredits
+    if (isInvalidInitialCredits(initialCredits)) {
+      throw new Error("initialCredits must be a positive integer")
+    }
+    const receiverLink = await AmqpConsumer.openReceiver(connection, address, id, preSettled, filter, initialCredits)
     return new AmqpConsumer(id, connection, consumersList, receiverLink, params)
   }
 
@@ -122,14 +146,15 @@ export class AmqpConsumer implements Consumer {
     address: string,
     consumerId: string,
     preSettled: boolean,
-    filter?: SourceFilter
+    filter?: SourceFilter,
+    initialCredits?: number
   ): Promise<Receiver> {
     return openLink<Receiver>(
       connection,
       ReceiverEvents.receiverOpen,
       ReceiverEvents.receiverError,
       connection.open_receiver.bind(connection),
-      getConsumerReceiverLinkConfigurationFrom(address, consumerId, preSettled, filter)
+      getConsumerReceiverLinkConfigurationFrom(address, consumerId, preSettled, filter, initialCredits)
     )
   }
 
@@ -162,16 +187,64 @@ export class AmqpConsumer implements Consumer {
   }
 
   start() {
+    if (this.started) return
+    this.started = true
     this.receiverLink.on(ReceiverEvents.message, (context: EventContext) => {
       if (context.message && context.delivery) {
-        const isPreSettled =
-          "directReplyTo" in this.params ? true : ((this.params as QueueConsumerParams).preSettled ?? false)
-        const deliveryContext = isPreSettled
+        const deliveryContext = this.isPreSettled
           ? AmqpConsumer.PRE_SETTLED_DELIVERY_CONTEXT
-          : new AmqpDeliveryContext(context.delivery, this.receiverLink)
+          : new AmqpDeliveryContext(context.delivery, this.receiverLink, this.trackDelivery())
         this.params.messageHandler(deliveryContext, context.message)
       }
     })
+    const manualCredits = this.manualCredits
+    if (manualCredits) {
+      this.receiverLink.on(ReceiverEvents.receiverOpen, () => this.restoreCredit(manualCredits))
+      this.receiverLink.add_credit(manualCredits)
+    }
+  }
+
+  private get isPreSettled() {
+    return "directReplyTo" in this.params || !!this.params.preSettled
+  }
+
+  private get manualCredits() {
+    if ("directReplyTo" in this.params || this.params.preSettled) return undefined
+    return this.params.initialCredits
+  }
+
+  private restoreCredit(credits: number) {
+    this.linkNumber++
+    this.unsettledCount = 0
+    this.settledSinceLastReturn = 0
+    this.receiverLink.add_credit(credits)
+  }
+
+  private trackDelivery(): (() => void) | undefined {
+    const manualCredits = this.manualCredits
+    if (!manualCredits) return undefined
+    const deliveryLinkNumber = this.linkNumber
+    this.unsettledCount++
+    let alreadySettled = false
+    return () => {
+      if (alreadySettled) return
+      alreadySettled = true
+      this.onMessageSettled(deliveryLinkNumber, manualCredits)
+    }
+  }
+
+  private onMessageSettled(deliveryLinkNumber: number, credits: number) {
+    if (!this.isFromCurrentLink(deliveryLinkNumber)) return
+    this.unsettledCount--
+    this.settledSinceLastReturn++
+    const remaining = remainingCredit(credits, this.unsettledCount, this.settledSinceLastReturn)
+    if (!shouldReturnSettledCredits(this.settledSinceLastReturn, remaining)) return
+    this.receiverLink.add_credit(this.settledSinceLastReturn)
+    this.settledSinceLastReturn = 0
+  }
+
+  private isFromCurrentLink(deliveryLinkNumber: number) {
+    return deliveryLinkNumber === this.linkNumber && this.receiverLink.is_open()
   }
 
   close() {

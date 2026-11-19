@@ -10,6 +10,8 @@ This library is meant to be used with RabbitMQ `4.x`. </br>
 
 - [Getting started](#getting-started)
 
+- [Consumer flow control](#consumer-flow-control)
+
 - [Resources](#resources)
 
 - [Connection recovery](#connection-recovery)
@@ -47,6 +49,34 @@ RabbitMQ selects the virtual host of an AMQP 1.0 connection through the `hostnam
 Over TLS this does not affect the server name sent for SNI: `virtualHost` only sets the `open` frame `hostname`, while the TLS server name is still derived from `host`.
 
 When the virtual host does not exist, or the user has no permission on it, the broker closes the socket without sending an AMQP error frame. The promise returned by `createConnection` is rejected in that case, so the connection attempt fails rather than hanging.
+
+## Consumer flow control
+
+By default the client relies on [rhea](https://github.com/amqp/rhea)'s credit window (1000 credits), so up to 1000
+messages can be delivered to a consumer before any of them is settled. If your consumers process messages slowly, you
+can bound the number of unsettled messages held by a consumer with `initialCredits`, similar to `basic.qos` (prefetch)
+in AMQP 0.9.1 and to `initialCredits` in the
+[other RabbitMQ AMQP 1.0 clients](https://www.rabbitmq.com/client-libraries/amqp-client-libraries):
+
+```typescript
+const consumer = await connection.createConsumer({
+  queue: { name: "my-queue" },
+  initialCredits: 10, // at most 10 unsettled messages delivered to this consumer
+  messageHandler: (context, message) => {
+    // ... process the message ...
+    context.accept() // settled messages give their credit back to the broker
+  },
+})
+consumer.start()
+```
+
+Settled messages (`accept`, `discard` or `requeue`) give their credit back to the broker in batches, like the other
+RabbitMQ AMQP 1.0 clients, so the consumer never holds more than `initialCredits` unsettled messages. After an automatic
+reconnection the consumer starts again with `initialCredits` credits.
+
+For pre-settled consumers (`preSettled: true`) messages are settled by the broker, so their credit is given back as they
+are delivered to the `messageHandler`. In this case `initialCredits` limits how many messages the client buffers, not
+how many asynchronous handlers are running at the same time.
 
 ## Resources
 
