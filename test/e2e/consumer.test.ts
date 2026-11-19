@@ -712,4 +712,69 @@ describe("Consumer", () => {
     await wait(1000)
     expect(received).to.be.eql(2)
   }, 15000)
+
+  test("consumer with initialCredits holds no more unsettled messages than its credits after a reconnection", async () => {
+    const proxy = await createTcpProxy(host, port)
+    const proxiedEnvironment = createEnvironment({ host: "localhost", port: proxy.port, username, password })
+    try {
+      const publisher = await connection.createPublisher({ queue: { name: queueName } })
+      for (let i = 0; i < 10; i++) {
+        await publisher.publish(createAmqpMessage({ body: `message-${i}` }))
+      }
+      const proxiedConnection = await proxiedEnvironment.createConnection()
+      let received = 0
+      const consumer = await proxiedConnection.createConsumer({
+        queue: { name: queueName },
+        initialCredits: 3,
+        messageHandler: () => {
+          received++
+        },
+      })
+      consumer.start()
+      await eventually(() => expect(received).to.be.eql(3))
+
+      proxy.dropConnections()
+
+      // the 3 unsettled messages go back to the queue and the new link gets 3 credits again
+      await eventually(() => expect(received).to.be.eql(6), 10000)
+      await wait(1000)
+      expect(received).to.be.eql(6)
+    } finally {
+      await proxiedEnvironment.close()
+      await proxy.close()
+    }
+  }, 30000)
+
+  test("settling messages delivered before a reconnection does not grant more credits", async () => {
+    const proxy = await createTcpProxy(host, port)
+    const proxiedEnvironment = createEnvironment({ host: "localhost", port: proxy.port, username, password })
+    try {
+      const publisher = await connection.createPublisher({ queue: { name: queueName } })
+      for (let i = 0; i < 10; i++) {
+        await publisher.publish(createAmqpMessage({ body: `message-${i}` }))
+      }
+      const proxiedConnection = await proxiedEnvironment.createConnection()
+      const contexts: DeliveryContext[] = []
+      const consumer = await proxiedConnection.createConsumer({
+        queue: { name: queueName },
+        initialCredits: 3,
+        messageHandler: (context) => {
+          contexts.push(context)
+        },
+      })
+      consumer.start()
+      await eventually(() => expect(contexts.length).to.be.eql(3))
+
+      proxy.dropConnections()
+      await eventually(() => expect(contexts.length).to.be.eql(6), 10000)
+
+      // the messages of the old link were already requeued by the broker
+      contexts.slice(0, 3).forEach((context) => context.accept())
+      await wait(1000)
+      expect(contexts.length).to.be.eql(6)
+    } finally {
+      await proxiedEnvironment.close()
+      await proxy.close()
+    }
+  }, 30000)
 })
