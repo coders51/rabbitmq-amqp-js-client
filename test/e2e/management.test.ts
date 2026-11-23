@@ -82,7 +82,7 @@ describe("Management", () => {
         type: "classic",
         maxPriority: 123,
         mode: "default",
-        version: 1,
+        version: 2,
       })
 
       await eventually(async () => {
