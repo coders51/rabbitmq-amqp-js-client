@@ -2,12 +2,11 @@
   "name": "example",
   "version": "1.0.0",
   "description": "",
-  "main": "index.js",
+  "main": "index.cjs",
   "type": "module",
   "scripts": {
-    "start": "node index.js",
-    "rebuild-source": "cd .. && npm run build && cd - && npm install --force",
-    "websocket-example": "node websocket_example.js"
+    "start": "node index.cjs",
+    "rebuild-source": "cd .. && npm run build && cd - && npm install --force"
   },
   "author": "",
   "license": "ISC",
