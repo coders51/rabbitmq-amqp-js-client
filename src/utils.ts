@@ -97,10 +97,19 @@ export class Offset {
     public readonly value?: bigint
   ) {}
 
-  toValue() {
-    if (this.value !== undefined && (this.type === OffsetType.numeric || this.type === OffsetType.timestamp))
-      return this.value
-    return this.type.toString()
+  toValue(): string | bigint {
+    switch (this.type) {
+      case OffsetType.first:
+      case OffsetType.last:
+      case OffsetType.next:
+        return this.type
+      case OffsetType.numeric:
+      case OffsetType.timestamp:
+        if (this.value == null) throw new Error(`Offset of type ${this.type} needs a value`)
+        return this.value
+      default:
+        throw new Error(`Unsupported offset type: ${this.type}`)
+    }
   }
 
   static first() {
