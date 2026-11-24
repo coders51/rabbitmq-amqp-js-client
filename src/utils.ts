@@ -73,6 +73,16 @@ export function queueTypeFromString(queueType: string): QueueType {
   }
 }
 
+// https://github.com/amqp/rhea/blob/3.0.4/lib/types.js#L356
+// Written as two 32-bit halves because the browser Buffer polyfill has no writeBigUInt64BE.
+export function bigintTo64BitBuffer(value: bigint): Buffer {
+  const unsigned = BigInt.asUintN(64, value)
+  const buffer = Buffer.alloc(8)
+  buffer.writeUInt32BE(Number(unsigned >> 32n), 0)
+  buffer.writeUInt32BE(Number(unsigned & 0xffffffffn), 4)
+  return buffer
+}
+
 export enum OffsetType {
   first = "first",
   last = "last",
@@ -87,9 +97,19 @@ export class Offset {
     public readonly value?: bigint
   ) {}
 
-  toValue() {
-    if (this.value && (this.type === OffsetType.numeric || this.type === OffsetType.timestamp)) return this.value
-    return this.type.toString()
+  toValue(): string | bigint {
+    switch (this.type) {
+      case OffsetType.first:
+      case OffsetType.last:
+      case OffsetType.next:
+        return this.type
+      case OffsetType.numeric:
+      case OffsetType.timestamp:
+        if (this.value == null) throw new Error(`Offset of type ${this.type} needs a value`)
+        return this.value
+      default:
+        throw new Error(`Unsupported offset type: ${this.type}`)
+    }
   }
 
   static first() {
@@ -105,6 +125,7 @@ export class Offset {
   }
 
   static offset(offset: bigint) {
+    if (offset < 0n) throw new Error("Offset must not be negative")
     return new Offset(OffsetType.numeric, offset)
   }
 
