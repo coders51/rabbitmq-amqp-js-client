@@ -320,7 +320,7 @@ function addStreamArgumentsFrom(args: Record<string, unknown>, options: Partial<
     ...(options.segmentSize ? { "x-stream-max-segment-size-bytes": options.segmentSize } : {}),
     ...(options.filterSizeBytes ? { "x-stream-filter-size-bytes": options.filterSizeBytes } : {}),
     ...(options.initialClusterSize ? { "x-stream-initial-cluster-size": options.initialClusterSize } : {}),
-    ...(options.initialOffset !== undefined
+    ...(options.initialOffset
       ? { "x-stream-initial-offset": types.wrap_long(bigintTo64BitBuffer(options.initialOffset)) }
       : {}),
   }
@@ -330,7 +330,7 @@ export function checkStreamQueueOptions(
   options: Partial<StreamQueueOptions>,
   brokerProperties: { [x: string]: unknown } | undefined
 ) {
-  if (options.initialOffset === undefined) return
+  if (!options.initialOffset) return
   if (!isBrokerVersionAtLeast(brokerProperties, 4, 4)) {
     throw new Error("Stream initial offset is not supported by this broker. RabbitMQ 4.4 or later is required.")
   }

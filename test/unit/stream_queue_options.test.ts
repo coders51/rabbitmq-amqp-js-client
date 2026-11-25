@@ -39,11 +39,10 @@ describe("Stream queue options", () => {
       expect(Buffer.from(argument.value).readBigInt64BE()).toBe(1000n)
     })
 
-    test("sends the initial offset also when it is 0", () => {
+    test("does not send the initial offset when it is 0", () => {
       const body = buildDeclareQueueBody({ type: "stream", initialOffset: 0n })
 
-      const argument = body.arguments["x-stream-initial-offset"] as Typed
-      expect(argument.value).toBe(0)
+      expect(body.arguments).toEqual({ "x-queue-type": "stream" })
     })
 
     test("encodes the maximum initial offset without losing precision", () => {
