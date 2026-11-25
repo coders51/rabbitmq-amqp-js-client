@@ -10,6 +10,8 @@ This library is meant to be used with RabbitMQ `4.x`. </br>
 
 - [Getting started](#getting-started)
 
+- [Queue options](#queue-options)
+
 - [Consumer flow control](#consumer-flow-control)
 
 - [Resources](#resources)
@@ -49,6 +51,12 @@ RabbitMQ selects the virtual host of an AMQP 1.0 connection through the `hostnam
 Over TLS this does not affect the server name sent for SNI: `virtualHost` only sets the `open` frame `hostname`, while the TLS server name is still derived from `host`.
 
 When the virtual host does not exist, or the user has no permission on it, the broker closes the socket without sending an AMQP error frame. The promise returned by `createConnection` is rejected in that case, so the connection attempt fails rather than hanging.
+
+## Queue options
+
+Queue options that map to `x-` arguments (e.g. `maxPriority`, `deliveryLimit`, `initialOffset`) are sent only when
+truthy: `0`, `0n` and empty strings are ignored and the broker default applies. Values set in `arguments` are sent as
+they are.
 
 ## Consumer flow control
 

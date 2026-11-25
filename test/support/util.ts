@@ -282,9 +282,9 @@ export async function createBinding(
     headers: {
       Authorization: `Basic ${Buffer.from(`${username}:${password}`).toString("base64")}`,
     },
-    body: JSON.stringify({
+    json: {
       routing_key: routingKey,
-    }),
+    },
     responseType: "json",
     throwHttpErrors: false,
   })

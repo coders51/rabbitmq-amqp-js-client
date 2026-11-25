@@ -1,5 +1,14 @@
 import { AmqpExchange, Exchange, ExchangeInfo, ExchangeOptions } from "./exchange.js"
-import { AmqpQueue, Queue, QueueType, QueueOptions, QuorumQueueOptions, ClassicQueueOptions } from "./queue.js"
+import {
+  AmqpQueue,
+  Queue,
+  QueueType,
+  QueueOptions,
+  QuorumQueueOptions,
+  ClassicQueueOptions,
+  StreamQueueOptions,
+  MAX_STREAM_INITIAL_OFFSET,
+} from "./queue.js"
 import {
   EventContext,
   Message,
@@ -10,6 +19,7 @@ import {
   Sender,
   SenderOptions,
   generate_uuid,
+  types,
 } from "rhea"
 import { AmqpEndpoints, AmqpMethods, LinkMessageBuilder, ME } from "./link_message_builder.js"
 import {
@@ -25,6 +35,7 @@ import {
 } from "./response_decoder.js"
 import { AmqpBinding, Binding, BindingInfo, BindingOptions } from "./binding.js"
 import { openReceiver, openSender } from "./rhea_wrapper.js"
+import { bigintTo64BitBuffer, isBrokerVersionAtLeast } from "./utils.js"
 
 export const MANAGEMENT_NODE_CONFIGURATION: SenderOptions | ReceiverOptions = {
   snd_settle_mode: 1,
@@ -118,6 +129,7 @@ export class AmqpManagement implements Management {
   }
 
   async declareQueue(queueName: string, options: Partial<QueueOptions> = {}, timeoutMs?: number): Promise<Queue> {
+    if (options.type === "stream") checkStreamQueueOptions(options, this.connection.properties)
     const sentMessage = new LinkMessageBuilder()
       .sendTo(`/${AmqpEndpoints.Queues}/${encodeURIComponent(queueName)}`)
       .setReplyTo(ME)
@@ -259,7 +271,7 @@ export class AmqpManagement implements Management {
   }
 }
 
-function buildDeclareQueueBody(options: Partial<QueueOptions>) {
+export function buildDeclareQueueBody(options: Partial<QueueOptions>) {
   const body = {
     exclusive: options.exclusive ?? false,
     durable: options.durable ?? true, // needed at least by quorum queue type
@@ -274,6 +286,8 @@ function buildDeclareQueueBody(options: Partial<QueueOptions>) {
       body.arguments = addClassicArgumentsFrom(body.arguments, options)
       return body
     case "stream":
+      body.arguments = addStreamArgumentsFrom(body.arguments, options)
+      return body
     default:
       return body
   }
@@ -295,6 +309,35 @@ function addClassicArgumentsFrom(args: Record<string, unknown>, options: Partial
     ...(options.maxPriority ? { "x-max-priority": options.maxPriority } : {}),
     ...(options.mode ? { "x-queue-mode": options.mode } : {}),
     ...(options.version ? { "x-queue-version": options.version } : {}),
+  }
+}
+
+function addStreamArgumentsFrom(args: Record<string, unknown>, options: Partial<StreamQueueOptions>) {
+  return {
+    ...args,
+    ...(options.maxLengthBytes ? { "x-max-length-bytes": options.maxLengthBytes } : {}),
+    ...(options.maxAge ? { "x-max-age": options.maxAge } : {}),
+    ...(options.segmentSize ? { "x-stream-max-segment-size-bytes": options.segmentSize } : {}),
+    ...(options.filterSizeBytes ? { "x-stream-filter-size-bytes": options.filterSizeBytes } : {}),
+    ...(options.initialClusterSize ? { "x-stream-initial-cluster-size": options.initialClusterSize } : {}),
+    ...(options.initialOffset
+      ? { "x-stream-initial-offset": types.wrap_long(bigintTo64BitBuffer(options.initialOffset)) }
+      : {}),
+  }
+}
+
+export function checkStreamQueueOptions(
+  options: Partial<StreamQueueOptions>,
+  brokerProperties: { [x: string]: unknown } | undefined
+) {
+  if (!options.initialOffset) return
+  if (!isBrokerVersionAtLeast(brokerProperties, 4, 4)) {
+    throw new Error("Stream initial offset is not supported by this broker. RabbitMQ 4.4 or later is required.")
+  }
+  if (options.initialOffset < 0n || options.initialOffset > MAX_STREAM_INITIAL_OFFSET) {
+    throw new Error(
+      `Stream initial offset must be between 0 and ${MAX_STREAM_INITIAL_OFFSET}, given: ${options.initialOffset}`
+    )
   }
 }
 

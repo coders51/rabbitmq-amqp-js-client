@@ -13,7 +13,7 @@ type BaseQueueOptions = {
 }
 
 export type ClassicQueueOptions = BaseQueueOptions & {
-  type: Exclude<QueueType, "quorum">
+  type: "classic"
   durable: boolean
   maxPriority: number
   mode: ClassicQueueMode
@@ -29,7 +29,20 @@ export type QuorumQueueOptions = BaseQueueOptions & {
   targetGroupSize: number
 }
 
-export type QueueOptions = ClassicQueueOptions | QuorumQueueOptions
+export const MAX_STREAM_INITIAL_OFFSET = (1n << 62n) - 1n
+
+export type StreamQueueOptions = BaseQueueOptions & {
+  type: "stream"
+  durable: true
+  maxLengthBytes: number
+  maxAge: string
+  segmentSize: number
+  filterSizeBytes: number
+  initialClusterSize: number
+  initialOffset: bigint
+}
+
+export type QueueOptions = ClassicQueueOptions | QuorumQueueOptions | StreamQueueOptions
 
 export type QueueInfo = {
   name: string
